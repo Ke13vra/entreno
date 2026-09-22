@@ -591,6 +591,13 @@ function planBloque2(){
   return p;
 }
 
+/* plantillas disponibles dentro de la app */
+const PLANTILLAS=[
+ {id:'b1',name:'Bloque 1 · el de partida',fn:planBase},
+ {id:'b2',name:'Bloque 2 · variantes, femoral y cuello',fn:planBloque2}
+];
+const DCOL=['#ef4444','#3b82f6','#f59e0b','#8b5cf6','#10b981','#06b6d4','#64748b'];
+
 const MUS=['pecho','espalda','hombro','biceps','triceps','cuadriceps','femoral','gluteo','trapecio','core','cuello'];
 const MUSL={pecho:'Pecho',espalda:'Espalda',hombro:'Hombro',biceps:'Bíceps',triceps:'Tríceps',
   cuadriceps:'Cuádriceps',femoral:'Femoral',gluteo:'Glúteo',trapecio:'Trapecio',core:'Core',cuello:'Cuello'};
@@ -620,7 +627,10 @@ const FASES=[{w:1,n:'Calibración',rir:'RIR 3'},{w:5,n:'Acumulación',rir:'RIR 2
 const MET={box:{6:'Técnica / sombra',7.8:'Sacos y manoplas',9:'Guanteo ligero',12:'Sparring'},gym:6.0,abs:4.0};
 
 /* ================================ estado ================================ */
-const KEY='entreno_v2', OLD='entreno_v1';
+/* Al publicar una versión nueva solo hay que subir este número: _build.ps1 lo
+   copia al nombre de la caché del service worker y eso dispara la actualización. */
+const APP_V='2.3';
+const KEY='entreno_v2', OLD='entreno_v1', BAK='entreno_v2_bak';
 const DK=['lun','mar','mie','jue','vie','sab','dom'], DL=['L','M','X','J','V','S','D'];
 const DLN=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const MN=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -660,6 +670,20 @@ function migrate(){
   }catch(e){}
 }
 function save(){ try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){toast('No se pudo guardar. ¿Modo incógnito?');} }
+/* copia automática diaria, por si algún día se va algo al garete */
+function snapshot(){
+  try{
+    const raw=localStorage.getItem(KEY); if(!raw) return;
+    let b=null; try{b=JSON.parse(localStorage.getItem(BAK));}catch(e){}
+    if(b&&b.at&&Date.now()-b.at<864e5) return;
+    localStorage.setItem(BAK,JSON.stringify({at:Date.now(),v:APP_V,data:raw}));
+  }catch(e){}
+}
+function bakInfo(){
+  try{ const b=JSON.parse(localStorage.getItem(BAK)); if(!b||!b.at) return null;
+    return {at:b.at,days:Math.floor((Date.now()-b.at)/864e5),size:b.data.length};
+  }catch(e){ return null; }
+}
 const plan=()=>DB.blocks[DB.ab].plan;
 const dayObj=(m,k)=>plan()[m].find(x=>x.k===k)||{k,d:'',f:'',c:'#64748b',n:'',e:[]};
 const exK=(m,k,n)=>m+'|'+k+'|'+n;
@@ -1300,13 +1324,25 @@ function vPer(){
         <button type="button" class="btn sm" data-edit="${i}">Editar</button>
       </div></div>`;
   });
-  h+=`</div><div class="row" style="margin-top:11px">
-      <button type="button" class="btn" id="bNewB2">Crear bloque 2 sugerido</button>
-      <button type="button" class="btn" id="bNewDup">Duplicar el activo</button>
+  h+=`</div>
+    <label class="f" for="bTpl">Añadir desde plantilla</label>
+    <div class="grid2">
+      <select class="f" id="bTpl">${PLANTILLAS.map(p=>
+        `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+      <button type="button" class="btn" id="bTplAdd">Añadir</button>
     </div>
-    <div class="mini">El bloque 2 sugerido mantiene los primeros ejercicios de cada día (tu referencia para
-    medir progreso), baja los básicos a 5-8 repeticiones, sube los aislamientos a 15-25, cambia las variantes
-    del segundo y tercer ejercicio, y añade femoral el martes y cuello el miércoles.</div></div>`;
+    <div class="row" style="margin-top:9px">
+      <button type="button" class="btn" id="bNewDup">Duplicar el activo</button>
+      <button type="button" class="btn" id="bExpR">Exportar la activa</button>
+    </div>
+    <label class="f" for="bImpR">Importar rutina nueva (pega el texto que te dé)</label>
+    <textarea class="f" id="bImpR" placeholder='{"name":"Bloque 3","gym":[...]}'></textarea>
+    <div class="row" style="margin-top:9px">
+      <button type="button" class="btn pri" id="bImpRGo">Importar rutina</button>
+    </div>
+    <div class="mini">Importar una rutina <b>no borra nada</b>: crea un bloque más y lo activa. Los bloques
+    anteriores siguen ahí y puedes volver a cualquiera con "Activar". El historial de cada ejercicio se
+    conserva mientras el ejercicio mantenga el mismo nombre y el mismo día de la semana.</div></div>`;
 
   h+=`<div class="sect">PERFIL</div><div class="card">
     <div class="grid2">
@@ -1337,6 +1373,23 @@ function vPer(){
     </div>
     <div class="mini">Los datos viven en el navegador de este móvil. No se sincronizan solos: descarga la
     copia una vez al mes y no perderás nada si limpias el navegador o cambias de teléfono.</div></div>`;
+
+  const bi=bakInfo();
+  h+=`<div class="sect">VERSIÓN DE LA APP</div><div class="card">
+    <div class="lst">
+      <div class="it"><div class="g"><div class="t">Versión instalada</div>
+        <div class="d">${DB.blocks.length} bloque${DB.blocks.length>1?'s':''} · ${Object.keys(DB.log).length} días registrados</div></div>
+        <div class="n">${APP_V}</div></div>
+      <div class="it"><div class="g"><div class="t">Copia automática</div>
+        <div class="d">${bi?('hace '+(bi.days===0?'menos de un día':bi.days+' días')):'aún no hay'}</div></div>
+        <div class="n">${bi?Math.round(bi.size/1024)+' KB':'–'}</div></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button type="button" class="btn" id="bUpd">Buscar actualización</button>
+      ${bi?'<button type="button" class="btn" id="bBakR">Restaurar automática</button>':''}
+    </div>
+    <div class="mini">La app guarda una copia automática al día. Al actualizar no se pierde nada: los datos
+    no van dentro de la app, van en el almacenamiento del móvil, y la dirección no cambia nunca.</div></div>`;
   return h;
 }
 
@@ -1414,6 +1467,57 @@ function edCollect(){
       }); ex.m=m;
     } else ex[p]=el.value;
   });
+}
+
+/* ==================== importar / exportar rutinas ====================== */
+function normEx(x){
+  x=x||{};
+  const o={ n:String(x.n||'Ejercicio').trim().slice(0,90),
+    s:Math.min(12,Math.max(1,parseInt(x.s)||3)),
+    r:String(x.r==null?'8-12':x.r).trim().slice(0,26),
+    i:(x.i&&IC[x.i])?x.i:'generic',
+    t:String(x.t||'').trim().slice(0,12),
+    rest:Math.min(600,Math.max(0,parseInt(x.rest)||90)),
+    o:String(x.o||'').trim().slice(0,180), m:{} };
+  const m=(x.m&&typeof x.m==='object')?x.m:{};
+  Object.keys(m).forEach(k=>{ if(MUS.includes(k)){ const v=parseFloat(m[k]); if(v>0) o.m[k]=Math.min(2,v); } });
+  return o;
+}
+function normSide(arr,base){
+  const out=DK.map((k,i)=>({k,d:DLN[i].toUpperCase(),f:'Descanso',c:DCOL[i],n:'Descanso total.',e:[]}));
+  if(base) base.forEach((d,i)=>{ if(out[i]) out[i]=JSON.parse(JSON.stringify(d)); });
+  (arr||[]).forEach(d=>{
+    const i=DK.indexOf(d&&d.k); if(i<0) return;
+    out[i]={ k:DK[i], d:DLN[i].toUpperCase(), c:d.c||DCOL[i],
+      f:String(d.f||'').trim().slice(0,40), n:String(d.n||'').trim().slice(0,160),
+      e:(Array.isArray(d.e)?d.e:[]).map(normEx) };
+  });
+  return out;
+}
+/* Acepta {name, gym:[...], abs:[...]} o un bloque completo {name, plan:{gym,abs}}.
+   Los días que no vengan quedan como descanso; si falta 'abs' entero, se mantiene el de base. */
+function importRoutine(txt){
+  const o=JSON.parse(txt);
+  if(!o||typeof o!=='object') throw new Error('no es un objeto');
+  const src=o.plan&&(o.plan.gym||o.plan.abs)?o.plan:o;
+  const gymGiven=Array.isArray(src.gym), absGiven=Array.isArray(src.abs);
+  if(!gymGiven&&!absGiven) throw new Error('no encuentro "gym" ni "abs"');
+  /* se valida sobre lo que trae la rutina, no sobre lo heredado del plan base */
+  const cnt=a=>(a||[]).reduce((s,d)=>s+(Array.isArray(d&&d.e)?d.e.length:0),0);
+  const nEx=(gymGiven?cnt(src.gym):0)+(absGiven?cnt(src.abs):0);
+  if(!nEx) throw new Error('la rutina no tiene ningún ejercicio');
+  const base=planBase();
+  const b={ id:Date.now(), name:String(o.name||'Rutina importada').trim().slice(0,44), start:TODAY(),
+    plan:{ gym:normSide(src.gym, gymGiven?null:base.gym),
+           abs:normSide(src.abs, absGiven?null:base.abs) } };
+  return {block:b,nEx,nDias:b.plan.gym.filter(d=>d.e.length).length,
+    heredaAbs:!absGiven,heredaGym:!gymGiven};
+}
+function exportRoutine(i){
+  const b=DB.blocks[i];
+  const strip=s=>b.plan[s].filter(d=>d.e.length).map(d=>({k:d.k,f:d.f,n:d.n,
+    e:d.e.map(x=>({n:x.n,s:x.s,r:x.r,i:x.i,t:x.t,rest:x.rest,o:x.o,m:x.m}))}));
+  return JSON.stringify({name:b.name,gym:strip('gym'),abs:strip('abs')},null,1);
 }
 
 /* =============================== informe =============================== */
@@ -1591,9 +1695,26 @@ document.addEventListener('click',e=>{
   if(t.id==='bCsv'){ exportCsv(); return; }
   if(t.dataset.act!=null){ DB.ab=+t.dataset.act; save(); render(); return; }
   if(t.dataset.edit!=null){ openEd(+t.dataset.edit); return; }
-  if(t.id==='bNewB2'){
-    DB.blocks.push({id:Date.now(),name:'Bloque '+(DB.blocks.length+1),start:TODAY(),plan:planBloque2()});
-    DB.ab=DB.blocks.length-1; save(); render(); toast('Bloque creado y activado'); return; }
+  if(t.id==='bTplAdd'){
+    const p=PLANTILLAS.find(x=>x.id===$('#bTpl').value)||PLANTILLAS[0];
+    DB.blocks.push({id:Date.now(),name:p.name,start:TODAY(),plan:p.fn()});
+    DB.ab=DB.blocks.length-1; save(); render(); toast('Plantilla añadida y activada'); return; }
+  if(t.id==='bExpR'){
+    const txt=exportRoutine(DB.ab);
+    navigator.clipboard.writeText(txt).then(()=>toast('Rutina copiada. Pégala en el chat.'))
+      .catch(()=>{$('#bImpR').value=txt;toast('Rutina en el cuadro de texto');});
+    return; }
+  if(t.id==='bImpRGo'){
+    const raw=$('#bImpR').value.trim();
+    if(!raw){ toast('Pega primero el texto de la rutina'); return; }
+    let r; try{ r=importRoutine(raw); }catch(e){ toast('Rutina no válida: '+e.message); return; }
+    if(!confirm('Importar "'+r.block.name+'"?\n'+r.nDias+' días de gimnasio, '+r.nEx+' ejercicios.'+
+      (r.heredaAbs?'\nLa rutina de abdomen se mantiene como la tienes.':'')+
+      (r.heredaGym?'\nLa rutina de gimnasio se mantiene como la tienes.':'')+
+      '\n\nSe añade como bloque nuevo y se activa. No se borra nada.')) return;
+    try{ localStorage.setItem(BAK,JSON.stringify({at:Date.now(),v:APP_V,data:localStorage.getItem(KEY)||''})); }catch(e){}
+    DB.blocks.push(r.block); DB.ab=DB.blocks.length-1; save();
+    $('#bImpR').value=''; render(); toast('Rutina importada y activada'); return; }
   if(t.id==='bNewDup'){
     const cp=JSON.parse(JSON.stringify(DB.blocks[DB.ab]));
     cp.id=Date.now(); cp.name='Copia de '+cp.name; cp.start=TODAY();
@@ -1601,6 +1722,20 @@ document.addEventListener('click',e=>{
   if(t.id==='bBk'){ navigator.clipboard.writeText(JSON.stringify(DB))
     .then(()=>toast('Copia en el portapapeles')).catch(()=>{$('#pImp').value=JSON.stringify(DB);toast('Copia en el cuadro de texto');}); return; }
   if(t.id==='bBkD'){ dl('copia_entreno_'+TODAY()+'.json',JSON.stringify(DB),'application/json'); return; }
+  if(t.id==='bUpd'){
+    if(!swReg){ toast('Solo disponible en la app instalada'); return; }
+    toast('Buscando...');
+    swReg.update().then(()=>setTimeout(()=>{ if(!$('#updBar')) toast('Ya tienes la última versión'); },1500))
+      .catch(()=>toast('No se pudo comprobar. ¿Estás sin conexión?'));
+    return; }
+  if(t.id==='bBakR'){
+    const bi=bakInfo(); if(!bi) return;
+    if(!confirm('Restaurar la copia automática de hace '+(bi.days===0?'menos de un día':bi.days+' días')+
+      '? Lo registrado después se perderá.')) return;
+    try{ const b=JSON.parse(localStorage.getItem(BAK));
+      DB=JSON.parse(b.data); load(); save(); render(); toast('Copia automática restaurada');
+    }catch(e){ toast('La copia está dañada'); }
+    return; }
   if(t.id==='bImp'){
     try{ const o=JSON.parse($('#pImp').value); if(!o||typeof o!=='object') throw 0;
       DB=Object.assign({v:2,profile:{},blocks:[],ab:0,log:{},body:{},rd:{},prs:{}},o);
@@ -1745,15 +1880,48 @@ function beep(){
 $$('.timerbar button[data-t]').forEach(b=>b.onclick=()=>startTimer(+b.dataset.t));
 $('#tstop').onclick=()=>{clearInterval(tInt);tInt=null;tdisp.className='tdisp';tdisp.textContent='0:00';};
 
-
-/* ---- instalacion como app (PWA) ---- */
-if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
-  });
+/* ===================== actualización de la app (PWA) ===================== */
+let swReg=null, swWaiting=null;
+function showUpdateBar(){
+  if($('#updBar')) return;
+  const d=document.createElement('div');
+  d.id='updBar';
+  d.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(120px + env(safe-area-inset-bottom,0px));'+
+    'z-index:40;background:#2a1c10;border:1px solid #5b3618;border-radius:13px;padding:11px 12px;'+
+    'display:flex;gap:9px;align-items:center;max-width:604px;margin:0 auto;'+
+    'box-shadow:0 8px 28px rgba(0,0,0,.55)';
+  d.innerHTML='<div style="flex:1 1 0;min-width:0;font-size:13px;color:#ffd7b0">'+
+    '<b>Hay una versión nueva.</b> Tus datos se conservan.</div>'+
+    '<button type="button" id="updGo" class="btn pri" style="flex:0 0 auto;padding:9px 13px">Actualizar</button>'+
+    '<button type="button" id="updNo" class="btn" style="flex:0 0 auto;padding:9px 11px">Luego</button>';
+  document.body.appendChild(d);
+  $('#updGo').onclick=()=>{
+    try{ localStorage.setItem(BAK,JSON.stringify({at:Date.now(),v:APP_V,data:localStorage.getItem(KEY)||''})); }catch(e){}
+    if(swWaiting){ swWaiting.postMessage('skipWaiting'); setTimeout(()=>location.reload(),900); }
+    else location.reload();
+  };
+  $('#updNo').onclick=()=>d.remove();
 }
-if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
-load(); render();
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    swReg=reg;
+    if(reg.waiting){ swWaiting=reg.waiting; showUpdateBar(); }
+    reg.addEventListener('updatefound',()=>{
+      const nw=reg.installing; if(!nw) return;
+      nw.addEventListener('statechange',()=>{
+        if(nw.state==='installed'&&navigator.serviceWorker.controller){ swWaiting=nw; showUpdateBar(); }
+      });
+    });
+  }).catch(()=>{});
+  let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(reloaded) return; reloaded=true; location.reload();
+  });
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&swReg) swReg.update().catch(()=>{}); });
+}
+if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+load(); snapshot(); render();
 setInterval(()=>{ if(view==='hoy'&&DB.log[TODAY()]&&DB.log[TODAY()].start&&!DB.log[TODAY()].end){
   const el=$('.sessbar .k'); if(el){const m=sessElapsed();el.textContent=m+"'";el.className='k'+(m>60?' over':'');}
 }},30000);
