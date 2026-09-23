@@ -432,6 +432,9 @@
 <!-- editor de bloques -->
 <dialog id="dEd"><div class="dlg" id="edBody"></div></dialog>
 
+<!-- propuesta de la IA -->
+<dialog id="dAI"><div class="dlg" id="aiBody"></div></dialog>
+
 <!-- informe -->
 <dialog id="dRep"><div class="dlg">
   <h2>Informe de evolución</h2>
@@ -697,7 +700,7 @@ const MET={box:{6:'Técnica / sombra',7.8:'Sacos y manoplas',9:'Guanteo ligero',
 /* ================================ estado ================================ */
 /* Al publicar una versión nueva solo hay que subir este número: _build.ps1 lo
    copia al nombre de la caché del service worker y eso dispara la actualización. */
-const APP_V='2.4';
+const APP_V='2.5';
 const KEY='entreno_v2', OLD='entreno_v1', BAK='entreno_v2_bak';
 const DK=['lun','mar','mie','jue','vie','sab','dom'], DL=['L','M','X','J','V','S','D'];
 const DLN=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
@@ -825,6 +828,71 @@ const plan=()=>DB.blocks[DB.ab].plan;
 const dayObj=(m,k)=>plan()[m].find(x=>x.k===k)||{k,d:'',f:'',c:'#64748b',n:'',e:[]};
 const exK=(m,k,n)=>m+'|'+k+'|'+n;
 function dlog(d){ DB.log[d]=DB.log[d]||{ex:{}}; if(!DB.log[d].ex)DB.log[d].ex={}; return DB.log[d]; }
+const dkOf=d=>DK[(dOf(d).getDay()+6)%7];
+
+/* Una sesión puede quedar adaptada SOLO para hoy (por una molestia o por falta de
+   tiempo) sin tocar el bloque. Eso se guarda en DB.log[fecha].plan[modo], y estas
+   dos funciones son las que hacen que el resto de la app lo vea. */
+function dayEx(m,k){
+  const t=TODAY();
+  if(k===dkOf(t)){
+    const L=DB.log[t];
+    if(L&&L.plan&&Array.isArray(L.plan[m])&&L.plan[m].length) return L.plan[m];
+  }
+  return dayObj(m,k).e;
+}
+function findEx(m,dk,name,date){
+  const mm=(m==='abs')?'abs':'gym';
+  if(date){
+    const L=DB.log[date];
+    if(L&&L.plan&&Array.isArray(L.plan[mm])){
+      const f=L.plan[mm].find(x=>x.n===name);
+      if(f) return f;
+    }
+  }
+  return (dayObj(mm,dk).e||[]).find(x=>x.n===name)||null;
+}
+const ajustadaHoy=m=>{ const L=DB.log[TODAY()]; return !!(L&&L.plan&&Array.isArray(L.plan[m])&&L.plan[m].length); };
+
+/* ============================ adaptador de IA ===========================
+   Toda la comunicación con el modelo pasa por aquí. La URL y el token se guardan
+   solo en este móvil, nunca en el repositorio. Si no hay conexión o no está
+   configurado, las funciones de IA se ocultan y la app sigue funcionando igual:
+   registrar series NUNCA depende de la red. */
+const AI={
+  cfg(){
+    const a=(DB.profile&&DB.profile.ai)||{};
+    return { url:String(a.url||'').trim().replace(/\/+$/,''), token:String(a.token||'').trim() };
+  },
+  listo(){ const c=this.cfg(); return !!(c.url&&c.token); },
+  online(){ return navigator.onLine!==false; },
+  usable(){ return this.listo()&&this.online(); },
+  async call(task,payload){
+    const c=this.cfg();
+    if(!c.url||!c.token) throw new Error('Configura la IA en Perfil');
+    if(!this.online()) throw new Error('Sin conexión. La IA necesita internet');
+    let r;
+    try{
+      r=await fetch(c.url,{
+        method:'POST',
+        headers:{'content-type':'application/json','x-app-token':c.token},
+        body:JSON.stringify({task,payload}),
+        signal:AbortSignal.timeout(40000)
+      });
+    }catch(e){
+      if(e.name==='TimeoutError') throw new Error('El modelo ha tardado demasiado. Inténtalo otra vez');
+      /* Un fallo aquí es de red o de CORS. El navegador oculta cuál de los dos por
+         seguridad, así que se nombran los dos motivos posibles. */
+      throw new Error('No se pudo conectar. Comprueba la URL del Worker y que la dirección de la app esté en ALLOWED_ORIGIN');
+    }
+    let j=null; try{ j=await r.json(); }catch(e){}
+    if(r.status===401) throw new Error('Token incorrecto. Revísalo en Perfil');
+    if(r.status===403) throw new Error('Origen no permitido. Revisa ALLOWED_ORIGIN en Cloudflare');
+    if(r.status===429) throw new Error((j&&j.error)||'Límite diario alcanzado');
+    if(!r.ok||!j||!j.ok) throw new Error((j&&j.error)||('Error HTTP '+r.status));
+    return j.data;
+  }
+};
 
 /* ---------------------------- ciclo y fases ---------------------------- */
 function cyc(){
@@ -907,8 +975,7 @@ function volWeek(d){
     let anySet=false;
     Object.keys(L.ex).forEach(k=>{
       const [m,dk,...rest]=k.split('|'), nme=rest.join('|');
-      const D=dayObj(m==='abs'?'abs':'gym',dk);
-      const ex=(D.e||[]).find(x=>x.n===nme);
+      const ex=findEx(m,dk,nme,day);
       const done=(L.ex[k]||[]).filter(s=>s&&(nm(s.kg)||nm(s.reps))).length;
       if(!done) return;
       anySet=true; series+=done;
@@ -1098,9 +1165,16 @@ function barsChart(items,opt){
 
 /* ============================== vista HOY =============================== */
 function vHoy(){
-  const D=dayObj(mode,day), c=cyc(), f=fase();
+  const D=dayObj(mode,day), c=cyc(), f=fase(), EX=dayEx(mode,day);
   let h=`<div class="dayhead" style="background:${D.c}"><h1>${esc(D.d)}</h1>
     <p>${esc(D.f)}${f?' · '+f.rir:''}</p></div>`;
+
+  if(ajustadaHoy(mode)&&day===dkOf(TODAY())){
+    const L=DB.log[TODAY()];
+    h+=`<div class="banner b"><b>Sesión adaptada para hoy.</b> ${esc((L.planNota||''))}
+      <button type="button" class="btn sm" id="bUndoAdj" style="margin-top:8px;width:100%">
+        Volver a la sesión original</button></div>`;
+  }
 
   const sc=rdToday()?rdToday().score:null, rv=rdVerdict(sc);
   if(rv&&sc!=null&&sc<75)
@@ -1111,10 +1185,10 @@ function vHoy(){
     h+=`<div class="banner"><b>Semana de descarga.</b> Mitad de series y 60-70 % de la carga.</div>`;
 
   const L=DB.log[TODAY()]||{};
-  if(D.e.length){
-    const tot=D.e.reduce((a,e)=>a+e.s,0);
+  if(EX.length){
+    const tot=EX.reduce((a,e)=>a+e.s,0);
     let done=0, ton=0;
-    D.e.forEach(e=>{const s=(L.ex||{})[exK(mode,day,e.n)]||[];
+    EX.forEach(e=>{const s=(L.ex||{})[exK(mode,day,e.n)]||[];
       s.forEach(x=>{if(x&&nm(x.kg)&&nm(x.reps)){done++;ton+=nm(x.kg)*nm(x.reps);}});});
     const el=sessElapsed();
     h+=`<div class="sessbar">
@@ -1130,10 +1204,10 @@ function vHoy(){
     if(el!=null&&el>60) h+=`<div class="banner r">Llevas ${el} min. Corta aquí: lo que queda suma poco y te resta recuperación.</div>`;
   }
 
-  if(!D.e.length){
+  if(!EX.length){
     h+=`<div class="banner g">${esc(D.n)}</div>`;
   }else{
-    D.e.forEach((ex,ix)=>{
+    EX.forEach((ex,ix)=>{
       const k=exK(mode,day,ex.n), last=lastOf(k), sg=sugg(ex,k), st=stalled(k), pr=DB.prs[k];
       const cur=((L.ex||{})[k])||[];
       const isPR=cur.some(s=>{if(!s)return false;const b=e1rm(nm(s.kg),nm(s.reps));return pr&&b>pr.e*1.001;});
@@ -1169,6 +1243,30 @@ function vHoy(){
       h+=`</div>${ex.o?`<div class="exnote">${esc(ex.o)}</div>`:''}</section>`;
     });
     h+=`<div class="banner">${esc(D.n)}</div>`;
+
+    /* --- ajuste de la sesión con IA --- */
+    if(day===dkOf(TODAY())){
+      h+=`<div class="card"><h3>Adaptar la sesión de hoy</h3>`;
+      if(!AI.listo()){
+        h+=`<div class="mini" style="margin-top:0">Conecta la IA en <b>Perfil → Asistente</b> y podrás
+          pedirle que te reorganice la sesión por una molestia o por falta de tiempo.</div>`;
+      }else if(!AI.online()){
+        h+=`<div class="mini" style="margin-top:0">Sin conexión. Esta función necesita internet;
+          el registro de series funciona igual.</div>`;
+      }else{
+        h+=`<label class="f" for="aiAsk" style="margin-top:0">¿Qué pasa hoy?</label>
+          <input class="f" type="text" id="aiAsk" placeholder="Me molesta el hombro derecho">
+          <label class="f" for="aiMin">Minutos disponibles</label>
+          <input class="f" type="number" id="aiMin" inputmode="numeric" value="60" min="10" max="120">
+          <div class="row" style="margin-top:11px">
+            <button type="button" class="btn pri" id="bAiAdj">Adaptar sesión</button>
+          </div>
+          <div class="mini">Ejemplos: "me molesta el hombro", "solo tengo 35 minutos", "la máquina de
+          press está ocupada", "vengo fundido del boxeo". Te propone los cambios y tú decides.</div>`;
+      }
+      h+=`</div>`;
+    }
+
     h+=`<div class="card"><h3>Cómo fue la sesión</h3>
       <label class="f" for="sRpe">Esfuerzo percibido (1 suave – 10 al límite)</label>
       <input class="f" type="range" id="sRpe" min="1" max="10" step="1" value="${L.rpe||7}">
@@ -1197,21 +1295,20 @@ function sessElapsed(){
 let GS={on:false,ei:0,si:0,adj:1,rest:0,restEnd:0,ask:false,plates:false,end:false};
 let gsInt=null;
 
-function gsEx(){ const D=dayObj(mode,day); return D.e[GS.ei]||null; }
+function gsEx(){ return dayEx(mode,day)[GS.ei]||null; }
 function gsSets(k){ return ((DB.log[TODAY()]||{}).ex||{})[k]||[]; }
 function gsDoneSet(ex,k,i){ const s=gsSets(k)[i]; return !!(s&&nm(s.kg)!=null&&nm(s.reps)); }
 /* primera serie sin registrar de todo el día */
 function gsFirstPending(){
-  const D=dayObj(mode,day);
-  for(let e=0;e<D.e.length;e++){
-    const k=exK(mode,day,D.e[e].n);
-    for(let s=0;s<D.e[e].s;s++) if(!gsDoneSet(D.e[e],k,s)) return {ei:e,si:s};
+  const E=dayEx(mode,day);
+  for(let e=0;e<E.length;e++){
+    const k=exK(mode,day,E[e].n);
+    for(let s=0;s<E[e].s;s++) if(!gsDoneSet(E[e],k,s)) return {ei:e,si:s};
   }
   return null;
 }
 function gsOpen(){
-  const D=dayObj(mode,day);
-  if(!D.e.length){ toast('Hoy no hay sesión: es descanso'); return; }
+  if(!dayEx(mode,day).length){ toast('Hoy no hay sesión: es descanso'); return; }
   const p=gsFirstPending();
   GS={on:true,ei:p?p.ei:0,si:p?p.si:0,adj:1,restEnd:0,ask:false,plates:false,end:!p};
   const L=dlog(TODAY()); if(!L.start) L.start=Date.now(); save();
@@ -1235,11 +1332,11 @@ function gsTarget(){
 }
 function gsRender(){
   const el=$('#gs'); if(!GS.on) return;
-  const D=dayObj(mode,day);
+  const D=dayObj(mode,day), E=dayEx(mode,day);
 
-  if(GS.end||GS.ei>=D.e.length){
+  if(GS.end||GS.ei>=E.length){
     let tot=0,ton=0;
-    D.e.forEach(e=>{const k=exK(mode,day,e.n);
+    E.forEach(e=>{const k=exK(mode,day,e.n);
       gsSets(k).forEach(s=>{if(s&&nm(s.kg)!=null&&nm(s.reps)){tot++;ton+=nm(s.kg)*nm(s.reps);}});});
     const min=sessElapsed();
     el.innerHTML=`<div class="gsTop"><button type="button" class="x" id="gsX" aria-label="Cerrar">✕</button>
@@ -1255,16 +1352,16 @@ function gsRender(){
     return;
   }
 
-  const ex=D.e[GS.ei], k=exK(mode,day,ex.n);
+  const ex=E[GS.ei], k=exK(mode,day,ex.n);
   const tgt=gsTarget(), sg=sugg(ex,k), bar=nm(DB.profile.bar)||20;
   let totS=0,okS=0;
-  D.e.forEach(e=>{const kk=exK(mode,day,e.n); totS+=e.s;
+  E.forEach(e=>{const kk=exK(mode,day,e.n); totS+=e.s;
     for(let i=0;i<e.s;i++) if(gsDoneSet(e,kk,i)) okS++;});
   const resting=GS.restEnd>Date.now();
 
   let h=`<div class="gsTop">
       <button type="button" class="x" id="gsX" aria-label="Salir del modo guiado">✕</button>
-      <div class="ti"><b>Ejercicio ${GS.ei+1} de ${D.e.length}</b>
+      <div class="ti"><b>Ejercicio ${GS.ei+1} de ${E.length}</b>
         <span>${esc(D.d)} · ${okS}/${totS} series${fase()?' · '+fase().rir:''}</span></div>
     </div>
     <div class="gsProg"><i style="width:${totS?(okS/totS*100).toFixed(1):0}%"></i></div>
@@ -1358,11 +1455,11 @@ function gsSave(){
   return true;
 }
 function gsAdvance(){
-  const D=dayObj(mode,day), ex=D.e[GS.ei];
+  const E=dayEx(mode,day), ex=E[GS.ei];
   if(GS.si+1<ex.s){ GS.si++; gsStartRest(ex.rest); }
   else{
     GS.si=0; GS.adj=1; GS.ei++;
-    if(GS.ei>=D.e.length){ GS.end=true; GS.restEnd=0; clearInterval(gsInt); gsInt=null; }
+    if(GS.ei>=E.length){ GS.end=true; GS.restEnd=0; clearInterval(gsInt); gsInt=null; }
     else gsStartRest(ex.rest);
   }
   gsRender();
@@ -1448,6 +1545,25 @@ function vPro(){
     <div class="kpi"><div class="v">${(vw.ton/1000).toFixed(1)}<span style="font-size:13px">t</span></div><div class="l">Tonelaje semanal</div></div>
     <div class="kpi"><div class="v">${Object.keys(DB.prs).length}</div><div class="l">Récords registrados</div></div>
   </div>`;
+
+  /* revisión semanal con IA */
+  const rev=(DB.ai&&DB.ai.review)||null;
+  h+=`<div class="sect">REVISIÓN SEMANAL</div><div class="card">`;
+  if(rev){
+    const dd=new Date(rev.at), fh=dd.getDate()+'/'+(dd.getMonth()+1);
+    h+=`<div class="mini" style="margin-top:0">Generada el ${fh}</div>
+      <ul style="margin:9px 0 0;padding-left:18px;font-size:13.5px;color:var(--tx2)">${
+      (rev.data.observaciones||[]).map(o=>`<li style="margin-bottom:6px">${esc(o)}</li>`).join('')}</ul>
+      <div class="banner g" style="margin-top:11px"><b>Acción de esta semana:</b> ${esc(rev.data.accion||'')}</div>
+      ${rev.data.alerta?`<div class="banner r"><b>Atención:</b> ${esc(rev.data.alerta)}</div>`:''}`;
+  }else{
+    h+=`<div class="mini" style="margin-top:0">Analiza tus números de la semana y te da tres
+      observaciones y una sola acción. Una, no cinco: si te da cinco cosas no harás ninguna.</div>`;
+  }
+  if(AI.usable()) h+=`<div class="row" style="margin-top:11px">
+      <button type="button" class="btn pri" id="bAiRev">${rev?'Volver a analizar':'Analizar la semana'}</button></div>`;
+  else h+=`<div class="mini">${AI.listo()?'Sin conexión ahora mismo.':'Conecta la IA en Perfil → Asistente.'}</div>`;
+  h+=`</div>`;
 
   /* volumen por músculo */
   h+=`<div class="sect">VOLUMEN SEMANAL POR MÚSCULO</div><div class="card">`;
@@ -1671,6 +1787,25 @@ function vPer(){
     anteriores siguen ahí y puedes volver a cualquiera con "Activar". El historial de cada ejercicio se
     conserva mientras el ejercicio mantenga el mismo nombre y el mismo día de la semana.</div></div>`;
 
+  const ai=(p.ai||{});
+  h+=`<div class="sect">ASISTENTE (IA)</div><div class="card">
+    <div class="lst"><div class="it"><div class="g"><div class="t">Estado</div>
+      <div class="d">${AI.listo()?(AI.online()?'Conectado y con red':'Configurado, sin conexión'):'Sin configurar'}</div></div>
+      <div class="n" style="color:${AI.usable()?'var(--ok)':'var(--tx3)'}">${AI.usable()?'●':'○'}</div></div></div>
+    <label class="f" for="aiUrl">URL del Worker</label>
+    <input class="f" type="url" id="aiUrl" value="${esc(ai.url||'')}" placeholder="https://gymbro.xxx.workers.dev"
+      autocomplete="off" autocapitalize="off" spellcheck="false">
+    <label class="f" for="aiTok">Token de la app</label>
+    <input class="f" type="password" id="aiTok" value="${esc(ai.token||'')}" placeholder="el token que pusiste en Cloudflare"
+      autocomplete="off">
+    <div class="row" style="margin-top:11px">
+      <button type="button" class="btn" id="bAiTest">Probar conexión</button>
+      ${AI.usable()?'<button type="button" class="btn pri" id="bAiRoutine">Generar bloque nuevo</button>':''}
+    </div>
+    <div class="mini">La URL y el token se guardan <b>solo en este móvil</b>, nunca en el repositorio.
+    La clave del modelo no está aquí: vive en Cloudflare y no sale de ahí. Si no hay conexión, la app
+    funciona igual y solo se ocultan las funciones de IA.</div></div>`;
+
   h+=`<div class="sect">PERFIL</div><div class="card">
     <div class="grid2">
       <div><label class="f" for="pAge" style="margin-top:4px">Edad</label>
@@ -1892,6 +2027,113 @@ function exportRoutine(i){
   return JSON.stringify({name:b.name,gym:strip('gym'),abs:strip('abs')},null,1);
 }
 
+/* ====================== propuestas de la IA (UI) ========================
+   Nada de lo que devuelve el modelo se aplica solo. Siempre se muestra como
+   propuesta, con el motivo, y decides tú. Y todo pasa por los validadores que
+   ya existen, que recortan lo que se salga de rango. */
+let aiPend=null;
+function aiBusy(btn,txt){
+  if(!btn) return ()=>{};
+  const o=btn.textContent; btn.textContent=txt||'Pensando...'; btn.disabled=true;
+  return ()=>{ btn.textContent=o; btn.disabled=false; };
+}
+function aiShow(titulo,cuerpo,okTxt,onOk){
+  aiPend=onOk||null;
+  $('#aiBody').innerHTML=`<h2>${esc(titulo)}</h2>${cuerpo}
+    <div class="row" style="margin-top:13px">
+      ${onOk?`<button type="button" class="btn ok" id="aiOk">${esc(okTxt||'Aplicar')}</button>`:''}
+      <button type="button" class="btn" id="aiNo">${onOk?'Descartar':'Cerrar'}</button>
+    </div>`;
+  $('#dAI').showModal();
+}
+function exLista(arr){
+  return `<div class="lst">`+arr.map((e,i)=>`<div class="it">
+    <div class="thumb" style="width:38px;height:38px;flex:0 0 38px">
+      <svg class="icon" viewBox="0 0 100 100">${IC[e.i]||IC.generic}</svg></div>
+    <div class="g"><div class="t">${i+1}. ${esc(e.n)}</div>
+      <div class="d">${e.s} × ${esc(e.r)}${e.o?' · '+esc(e.o):''}</div></div></div>`).join('')+`</div>`;
+}
+
+/* 1) adaptar la sesión de hoy */
+async function aiAdjust(btn){
+  const fin=aiBusy(btn,'Adaptando...');
+  try{
+    const D=dayObj(mode,day), EX=dayEx(mode,day);
+    const pet=($('#aiAsk')||{}).value||'';
+    if(!pet.trim()){ toast('Escribe qué pasa hoy'); fin(); return; }
+    const rd=rdToday();
+    const notas=Object.keys(DB.log).filter(d=>DB.log[d].note).sort().slice(-3)
+      .map(d=>DB.log[d].note).join(' · ');
+    const data=await AI.call('adjust',{
+      dia:D.d, foco:D.f,
+      ejercicios:EX.map(e=>({n:e.n,s:e.s,r:e.r,i:e.i,t:e.t,rest:e.rest,o:e.o,m:e.m})),
+      minutos:nm(($('#aiMin')||{}).value)||60,
+      peticion:pet.trim(),
+      recuperacion:rd?rd.score:null,
+      molestias:notas||null
+    });
+    const lista=(data.ejercicios||[]).map(normEx);
+    if(!lista.length) throw new Error('no ha devuelto ejercicios');
+    const series=lista.reduce((a,e)=>a+e.s,0);
+    const cuerpo=`<div class="banner b" style="margin-top:10px"><b>${esc(data.resumen||'')}</b></div>
+      ${data.motivo?`<div class="mini" style="margin-top:0">${esc(data.motivo)}</div>`:''}
+      ${(data.avisos&&data.avisos.length)?`<div class="banner" style="margin-top:10px">${
+        data.avisos.map(a=>esc(a)).join('<br>')}</div>`:''}
+      <div class="sect">SESIÓN PROPUESTA · ${lista.length} ejercicios · ${series} series</div>
+      ${exLista(lista)}
+      <div class="mini">Se aplica <b>solo a hoy</b>. Tu bloque no se toca y mañana vuelve la rutina normal.</div>`;
+    aiShow('Sesión adaptada',cuerpo,'Usar hoy',()=>{
+      const L=dlog(TODAY());
+      L.plan=L.plan||{}; L.plan[mode]=lista;
+      L.planNota=data.resumen||'';
+      saveNow(); render(); toast('Sesión de hoy adaptada');
+    });
+  }catch(e){ toast(e.message); }
+  fin();
+}
+
+/* 2) revisión semanal */
+async function aiReview(btn){
+  const fin=aiBusy(btn,'Analizando...');
+  try{
+    const data=await AI.call('review',{informe:buildReport()});
+    DB.ai=DB.ai||{}; DB.ai.review={at:Date.now(),data}; saveNow();
+    render();
+    toast('Revisión lista');
+  }catch(e){ toast(e.message); }
+  fin();
+}
+
+/* 3) generar el bloque siguiente */
+async function aiRoutine(btn){
+  const fin=aiBusy(btn,'Diseñando...');
+  try{
+    const actual=JSON.parse(exportRoutine(DB.ab));
+    const data=await AI.call('routine',{actual,informe:buildReport()});
+    const r=importRoutine(JSON.stringify({name:data.name||'Bloque IA',gym:data.gym,abs:data.abs}));
+    const dias=r.block.plan.gym.filter(d=>d.e.length);
+    const cuerpo=`<div class="kpi" style="margin:10px 0 0"><div class="v" style="font-size:18px">${esc(r.block.name)}</div>
+        <div class="l">nombre del bloque que se va a crear</div></div>
+      <div class="banner b" style="margin-top:10px"><b>${esc(data.resumen||'')}</b></div>
+      ${(data.cambios&&data.cambios.length)?`<div class="sect">QUÉ CAMBIA Y POR QUÉ</div>
+        <ul style="margin:0;padding-left:18px;font-size:13.5px;color:var(--tx2)">${
+        data.cambios.map(c=>`<li style="margin-bottom:6px">${esc(c)}</li>`).join('')}</ul>`:''}
+      <div class="sect">${r.nDias} DÍAS · ${r.nEx} EJERCICIOS</div>
+      ${dias.map(d=>`<div class="card" style="padding:9px 11px">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">${esc(d.d)} · ${esc(d.f)}</div>
+        <div class="mini" style="margin-top:0">${d.e.map(e=>esc(e.n)+' <b>'+e.s+'×'+esc(e.r)+'</b>').join('<br>')}</div>
+      </div>`).join('')}
+      <div class="mini">Se añade como bloque nuevo y se activa. No borra nada: los anteriores siguen
+      en la lista. El historial de cada ejercicio se conserva si mantiene nombre y día.</div>`;
+    aiShow('Bloque propuesto',cuerpo,'Añadir y activar',()=>{
+      bakNow();
+      DB.blocks.push(r.block); DB.ab=DB.blocks.length-1; saveNow(); render();
+      toast('Bloque añadido y activado');
+    });
+  }catch(e){ toast(e.message); }
+  fin();
+}
+
 /* =============================== informe =============================== */
 function buildReport(){
   const c=cyc(), f=fase(), vw=volWeek(TODAY()), rate=wRate(), vd=wVerdict(), gq=gainQuality();
@@ -2078,14 +2320,14 @@ $('#gs').addEventListener('click',e=>{
   if(t.id==='gsPrev'){
     GS.end=false; GS.restEnd=0; GS.ask=false;
     if(GS.si>0) GS.si--;
-    else if(GS.ei>0){ GS.ei--; GS.si=Math.max(0,(dayObj(mode,day).e[GS.ei].s||1)-1); GS.adj=1; }
+    else if(GS.ei>0){ GS.ei--; GS.si=Math.max(0,(dayEx(mode,day)[GS.ei].s||1)-1); GS.adj=1; }
     gsRender(); return;
   }
   if(t.id==='gsNext'){
-    const D=dayObj(mode,day), ex=D.e[GS.ei]; if(!ex) return;
+    const E=dayEx(mode,day), ex=E[GS.ei]; if(!ex) return;
     GS.restEnd=0; GS.ask=false;
     if(GS.si+1<ex.s) GS.si++;
-    else if(GS.ei+1<D.e.length){ GS.ei++; GS.si=0; GS.adj=1; }
+    else if(GS.ei+1<E.length){ GS.ei++; GS.si=0; GS.adj=1; }
     else GS.end=true;
     gsRender(); return;
   }
@@ -2105,6 +2347,31 @@ document.addEventListener('click',e=>{
   const t=e.target;
   const rb=t.closest('.rest'); if(rb){ startTimer(+rb.dataset.rest||90); return; }
   if(t.id==='bGuide'){ gsOpen(); return; }
+  if(t.id==='bAiAdj'){ aiAdjust(t); return; }
+  if(t.id==='bAiRev'){ aiReview(t); return; }
+  if(t.id==='bAiRoutine'){ aiRoutine(t); return; }
+  if(t.id==='aiOk'){ const f=aiPend; aiPend=null; $('#dAI').close(); if(f) f(); return; }
+  if(t.id==='aiNo'){ aiPend=null; $('#dAI').close(); return; }
+  if(t.id==='bUndoAdj'){
+    const L=dlog(TODAY());
+    if(L.plan){ delete L.plan[mode]; delete L.planNota; }
+    saveNow(); render(); toast('Sesión original restaurada'); return; }
+  if(t.id==='bAiTest'){
+    const fin=aiBusy(t,'Probando...');
+    (async()=>{
+      try{
+        const c=AI.cfg();
+        if(!c.url){ toast('Pon la URL del Worker'); fin(); return; }
+        const r=await fetch(c.url,{signal:AbortSignal.timeout(20000)});
+        const j=await r.json();
+        if(!j||!j.ok) throw new Error('la URL responde pero no es el proxy');
+        if(!c.token){ toast('Worker OK. Ahora pon el token'); fin(); return; }
+        await AI.call('review',{informe:'Prueba de conexión. Responde con una observación cualquiera.'});
+        toast('✓ Conexión y modelo funcionando');
+      }catch(e){ toast(e.message); }
+      fin(); render();
+    })();
+    return; }
   if(t.id==='bStart'){ const L=dlog(TODAY()); if(!L.start)L.start=Date.now(); save(); render(); return; }
   if(t.id==='bFin'){ const L=dlog(TODAY()); L.end=Date.now(); L.gym=mode==='gym'||L.gym; L.abs=mode==='abs'||L.abs;
     save(); toast('Sesión cerrada. '+(sessElapsed()||0)+' min'); render(); return; }
@@ -2180,6 +2447,8 @@ document.addEventListener('change',e=>{
   if(t.id==='pSex'){DB.profile.sex=t.value;save();render();}
   if(t.id==='pSur'){DB.profile.surplus=nm(t.value)||450;save();render();}
   if(t.id==='pBar'){DB.profile.bar=nm(t.value)||20;save();render();}
+  if(t.id==='aiUrl'){DB.profile.ai=DB.profile.ai||{};DB.profile.ai.url=t.value.trim();saveNow();}
+  if(t.id==='aiTok'){DB.profile.ai=DB.profile.ai||{};DB.profile.ai.token=t.value.trim();saveNow();}
   if(t.id==='pCs'){DB.profile.cycleStart=t.value;save();render();}
 });
 

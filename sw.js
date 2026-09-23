@@ -1,8 +1,8 @@
-/* Service worker generado por _build.ps1 Â· version 2.4
+/* Service worker generado por _build.ps1 Â· version 2.5
    Cachea la app para que funcione sin cobertura en el gimnasio.
    El nombre de la cache lleva la version: al cambiarla, el navegador
    instala el worker nuevo y avisa dentro de la app. */
-const CACHE = 'entreno-2.4';
+const CACHE = 'entreno-2.5';
 const FILES = [
   './',
   './index.html',
