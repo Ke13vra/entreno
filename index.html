@@ -1334,9 +1334,10 @@ function vPer(){
   DB.blocks.forEach((b,i)=>{
     h+=`<div class="it"><div class="g"><div class="t">${esc(b.name)}${i===DB.ab?' · activo':''}</div>
       <div class="d">${b.plan.gym.filter(d=>d.e.length).length} días de gimnasio${b.start?' · desde '+b.start:''}</div></div>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
         ${i===DB.ab?'':`<button type="button" class="btn sm" data-act="${i}">Activar</button>`}
         <button type="button" class="btn sm" data-edit="${i}">Editar</button>
+        ${DB.blocks.length>1?`<button type="button" class="btn sm dgr" data-del="${i}">Eliminar</button>`:''}
       </div></div>`;
   });
   h+=`</div><div class="row" style="margin-top:11px">
@@ -1648,6 +1649,14 @@ document.addEventListener('click',e=>{
   if(t.id==='bRep'){ $('#repTxt').value=buildReport(); $('#dRep').showModal(); return; }
   if(t.id==='bCsv'){ exportCsv(); return; }
   if(t.dataset.act!=null){ DB.ab=+t.dataset.act; save(); render(); return; }
+  if(t.dataset.del!=null){
+    const i=+t.dataset.del;
+    if(DB.blocks.length<=1){ toast('No puedes eliminar el único bloque'); return; }
+    if(!confirm('Eliminar el bloque "'+DB.blocks[i].name+'"? Se borra su plan. El registro de series y medidas no se toca.')) return;
+    DB.blocks.splice(i,1);
+    if(DB.ab>i) DB.ab--; else if(DB.ab===i) DB.ab=Math.max(0,i-1);
+    if(DB.ab>DB.blocks.length-1) DB.ab=DB.blocks.length-1;
+    save(); render(); toast('Bloque eliminado'); return; }
   if(t.dataset.edit!=null){ openEd(+t.dataset.edit); return; }
   if(t.id==='bNewB2'){
     DB.blocks.push({id:Date.now(),name:'Bloque '+(DB.blocks.length+1),start:TODAY(),plan:planBloque2()});

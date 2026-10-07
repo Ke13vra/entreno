@@ -1,6 +1,6 @@
 /* Service worker: cachea la app para que funcione sin cobertura en el gimnasio.
    Estrategia: cache-first con actualización en segundo plano. */
-const CACHE = 'entreno-v2-3';
+const CACHE = 'entreno-v2-4';
 const FILES = [
   './',
   './index.html',
