@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#0a0a0b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -15,9 +15,9 @@
 <meta name="format-detection" content="telephone=no">
 <style>
   :root{
-    --bg:#0b1220; --card:#151f31; --card2:#1c2942; --line:#26344d;
-    --tx:#e8eef7; --tx2:#9fb0c8; --tx3:#6f82a0;
-    --or:#fb923c; --ok:#34d399; --bad:#f87171; --warn:#fbbf24; --blu:#60a5fa; --vio:#a78bfa;
+    --bg:#0a0a0b; --card:#15151a; --card2:#1f1f26; --line:#33333d;
+    --tx:#f3f0ee; --tx2:#b9b3ae; --tx3:#817b76;
+    --or:#ef4444; --ok:#f5c518; --bad:#f87171; --warn:#f5c518; --blu:#f5c518; --vio:#ef4444;
     --sb: env(safe-area-inset-bottom, 0px);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
@@ -34,7 +34,7 @@
 
   /* ---------- cabecera ---------- */
   header{
-    position:sticky; top:0; z-index:20; background:rgba(11,18,32,.97);
+    position:sticky; top:0; z-index:20; background:rgba(10,10,11,.97);
     backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
     padding:10px 12px 8px; padding-top:calc(10px + env(safe-area-inset-top,0px));
   }
@@ -44,16 +44,16 @@
     font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:999px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0
   }
-  .pill.ph{margin-left:auto; color:var(--or); background:#2a1c10; border:1px solid #5b3618}
-  .pill.rd{color:var(--ok); background:#0f2a20; border:1px solid #1f5c43; cursor:pointer}
-  .pill.rd.mid{color:var(--warn); background:#2a2210; border-color:#5c4a18}
+  .pill.ph{margin-left:auto; color:var(--or); background:#2a1212; border:1px solid #5b1d1d}
+  .pill.rd{color:var(--ok); background:#2a2410; border:1px solid #5c4e18; cursor:pointer}
+  .pill.rd.mid{color:var(--warn); background:#2a2410; border-color:#5c4e18}
   .pill.rd.low{color:var(--bad); background:#2a1414; border-color:#5c2020}
   .modes{display:flex; gap:6px; margin-top:9px}
   .modes button{
     flex:1 1 0; min-width:0; padding:8px 0; border-radius:10px; border:1px solid var(--line);
     background:var(--card); color:var(--tx2); font-weight:700; font-size:13.5px; cursor:pointer
   }
-  .modes button[aria-pressed=true]{background:var(--or); border-color:var(--or); color:#1a1006}
+  .modes button[aria-pressed=true]{background:var(--or); border-color:var(--or); color:#160505}
   .days{display:flex; gap:5px; margin-top:8px}
   .days button{
     flex:1 1 0; min-width:0; padding:8px 2px; border-radius:10px; position:relative;
@@ -75,12 +75,12 @@
   .dayhead h1{font-size:20px; letter-spacing:1px}
   .dayhead p{margin:2px 0 0; font-size:14px; opacity:.93}
   .banner{
-    background:#2a1c10; border:1px solid #5b3618; color:#ffd7b0;
+    background:#2a2410; border:1px solid #5c4e18; color:#f6e4a3;
     border-radius:12px; padding:10px 12px; font-size:13px; margin-bottom:11px
   }
-  .banner.g{background:#0f2a20; border-color:#1f5c43; color:#b8f0d8}
+  .banner.g{background:#2a2410; border-color:#5c4e18; color:#f6e4a3}
   .banner.r{background:#2a1414; border-color:#5c2020; color:#fbc4c4}
-  .banner.b{background:#101f33; border-color:#24456b; color:#bcd6f5}
+  .banner.b{background:#2a2410; border-color:#5c4e18; color:#f6e4a3}
   .sect{font-size:12px; font-weight:800; color:var(--tx3); letter-spacing:1.2px; margin:16px 0 8px}
 
   /* ---------- barra de sesión ---------- */
@@ -96,20 +96,21 @@
     padding:7px 11px; border-radius:9px; border:1px solid var(--line);
     background:var(--card2); color:var(--tx); font-weight:700; font-size:12.5px; cursor:pointer
   }
-  .sessbar button.on{background:var(--ok); border-color:var(--ok); color:#06281c}
+  .sessbar button.on{background:var(--ok); border-color:var(--ok); color:#2a2206}
+  .sessbar button.fin{background:var(--bad); border-color:var(--bad); color:#2a0606}
 
   /* ---------- ejercicios ---------- */
   .ex{background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:11px; overflow:hidden}
-  .ex.pr{border-color:#7a5a12; box-shadow:inset 0 0 0 1px #46340a}
+  .ex.pr{border-color:#7a5a12; box-shadow:inset 0 0 0 1px #463a0a}
   .exhead{display:flex; gap:11px; padding:11px 12px 8px; align-items:flex-start}
   .thumb{width:60px; height:60px; flex:0 0 60px; background:var(--card2); border-radius:10px; padding:2px}
   .icon{width:100%; height:100%; display:block}
-  .fig{stroke:#dbe5f2; stroke-width:4.4; fill:none; stroke-linecap:round; stroke-linejoin:round}
-  .head{fill:#dbe5f2}
+  .fig{stroke:#ece7e2; stroke-width:4.4; fill:none; stroke-linecap:round; stroke-linejoin:round}
+  .head{fill:#ece7e2}
   .eq{stroke:var(--or); stroke-width:4.4; fill:none; stroke-linecap:round; stroke-linejoin:round}
   .eqc{stroke:var(--or); stroke-width:4.4; fill:none}
   .pl{stroke:var(--or); stroke-width:9; fill:none; stroke-linecap:round}
-  .frame{stroke:#607796; stroke-width:4.2; fill:none; stroke-linecap:round}
+  .frame{stroke:#8a8278; stroke-width:4.2; fill:none; stroke-linecap:round}
   .dash{stroke:var(--or); stroke-width:3; fill:none; stroke-dasharray:6 5; stroke-linecap:round}
   /* ---- animación de iconos (gesto en bucle) ---- */
   .icon .mv{transform-box:fill-box; transform-origin:center}
@@ -127,11 +128,11 @@
   .extarget{font-size:15px; font-weight:800; margin-top:3px}
   .tag{
     font-size:10px; font-weight:800; color:var(--or); border:1px solid var(--or);
-    background:#2a1c10; padding:2px 6px; border-radius:999px; margin-left:5px;
+    background:#2a1212; padding:2px 6px; border-radius:999px; margin-left:5px;
     vertical-align:1px; letter-spacing:.3px; white-space:nowrap
   }
-  .tag.sug{color:var(--ok); border-color:#1f5c43; background:#0f2a20}
-  .tag.prb{color:#facc15; border-color:#7a5a12; background:#2a2210}
+  .tag.sug{color:var(--ok); border-color:#5c4e18; background:#2a2410}
+  .tag.prb{color:#facc15; border-color:#7a5a12; background:#2a2410}
   .exlast{font-size:12.5px; color:var(--tx3); margin-top:4px}
   .exlast b{color:var(--tx2); font-weight:700}
   .colheads{font-size:10.5px; color:var(--tx3); display:flex; gap:7px; padding:5px 12px 0}
@@ -147,12 +148,12 @@
     font-size:16px; font-weight:700; text-align:center
   }
   .setrow input:focus{outline:2px solid var(--or); outline-offset:-2px}
-  .setrow input.filled{border-color:#2f6b52; background:#132a22}
+  .setrow input.filled{border-color:#5c4e18; background:#241f0e}
   .rest{
     flex:0 0 40px; width:40px; height:42px; border-radius:10px; cursor:pointer;
     background:var(--card2); border:1px solid var(--line); color:var(--or); font-size:16px
   }
-  .exnote{border-top:1px solid var(--line); padding:8px 12px; font-size:12.5px; color:var(--tx3); background:#111a2a}
+  .exnote{border-top:1px solid var(--line); padding:8px 12px; font-size:12.5px; color:var(--tx3); background:#121214}
 
   /* ---------- genéricos ---------- */
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 13px; margin-bottom:11px}
@@ -169,8 +170,8 @@
     padding:11px 10px; border-radius:11px; border:1px solid var(--line);
     background:var(--card2); color:var(--tx); font-weight:700; font-size:13.5px; cursor:pointer
   }
-  .btn.pri{background:var(--or); border-color:var(--or); color:#1a1006}
-  .btn.ok{background:var(--ok); border-color:var(--ok); color:#06281c}
+  .btn.pri{background:var(--or); border-color:var(--or); color:#160505}
+  .btn.ok{background:var(--ok); border-color:var(--ok); color:#2a2206}
   .btn.dgr{color:#fca5a5; border-color:#7f2222}
   .btn.sm{padding:7px 9px; font-size:12px}
   label.f{display:block; font-size:12px; color:var(--tx2); margin:11px 0 5px; font-weight:600}
@@ -193,9 +194,9 @@
   .bar .nm{flex:0 0 84px; color:var(--tx2); font-weight:600}
   .bar .tr{flex:1 1 0; height:16px; background:var(--card2); border-radius:8px; position:relative; overflow:hidden}
   .bar .fi{position:absolute; left:0; top:0; bottom:0; border-radius:8px; background:var(--blu)}
-  .bar .fi.lo{background:#3f5f86}
+  .bar .fi.lo{background:#5c4e18}
   .bar .fi.hi{background:var(--warn)}
-  .bar .zone{position:absolute; top:0; bottom:0; background:rgba(52,211,153,.16); border-left:1px solid #1f5c43; border-right:1px solid #1f5c43}
+  .bar .zone{position:absolute; top:0; bottom:0; background:rgba(245,197,24,.14); border-left:1px solid #5c4e18; border-right:1px solid #5c4e18}
   .bar .vl{flex:0 0 52px; text-align:right; font-weight:800; font-variant-numeric:tabular-nums}
   .lst{font-size:13.5px}
   .lst .it{display:flex; gap:9px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line)}
@@ -229,24 +230,24 @@
 
   /* ---------- gráficas ---------- */
   .chart{width:100%; height:150px; display:block}
-  .chart .ax{stroke:#2b3b56; stroke-width:1}
-  .chart .gl{stroke:#1e2b42; stroke-width:1}
+  .chart .ax{stroke:#3d3d47; stroke-width:1}
+  .chart .gl{stroke:#26262e; stroke-width:1}
   .chart .ln{fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round}
   .chart .ar{fill-opacity:.14}
-  .chart .pt{stroke:#0b1220; stroke-width:1.5}
-  .chart text{fill:#6f82a0; font-size:10px}
+  .chart .pt{stroke:#0a0a0b; stroke-width:1.5}
+  .chart text{fill:#817b76; font-size:10px}
   .chips{display:flex; gap:6px; overflow-x:auto; padding-bottom:7px; margin-bottom:4px}
   .chips::-webkit-scrollbar{display:none}
   .chip{
     flex:0 0 auto; padding:7px 11px; border-radius:999px; border:1px solid var(--line);
     background:var(--card2); color:var(--tx2); font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap
   }
-  .chip[aria-pressed=true]{background:var(--or); border-color:var(--or); color:#1a1006}
+  .chip[aria-pressed=true]{background:var(--or); border-color:var(--or); color:#160505}
 
   /* ---------- barra inferior ---------- */
   .timerbar{
     position:fixed; left:0; right:0; bottom:calc(58px + var(--sb)); z-index:29;
-    background:rgba(17,26,42,.97); backdrop-filter:blur(8px); border-top:1px solid var(--line);
+    background:rgba(16,16,19,.97); backdrop-filter:blur(8px); border-top:1px solid var(--line);
     padding:8px 12px; display:flex; align-items:center; gap:7px; max-width:620px; margin:0 auto
   }
   .tdisp{font-variant-numeric:tabular-nums; font-weight:800; font-size:22px; flex:0 0 60px}
@@ -258,7 +259,7 @@
   .timerbar button.stop{flex:0 0 40px; color:var(--tx3)}
   nav.tabs{
     position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex;
-    background:rgba(11,18,32,.99); border-top:1px solid var(--line);
+    background:rgba(10,10,11,.99); border-top:1px solid var(--line);
     padding-bottom:var(--sb); max-width:620px; margin:0 auto
   }
   nav.tabs button{
@@ -517,7 +518,7 @@ const IC={
  side_plank_raise: fl(88)+pl('fig','16,84 28,84 34,64')+ln('fig',34,64,84,86)+hd(32,56)+ln('fig',34,64,38,44)
    +ar(62,66,62,50)+ar(62,66,62,80),
  ab_wheel: fl(88)+hd(60,56)+ln('fig',54,62,28,78)+pl('fig','28,78 30,85 50,88')+ln('fig',54,62,78,74)
-   +'<circle class="eqc" cx="80" cy="78" r="9"/><circle cx="80" cy="78" r="2.6" fill="#fb923c"/>'
+   +'<circle class="eqc" cx="80" cy="78" r="9"/><circle cx="80" cy="78" r="2.6" fill="#ef4444"/>'
    +pa('dash','M 48,48 Q 66,40 82,50')+ar(76,46,83,51),
  dead_bug: fl(86)+hd(24,76,6.5)+ln('fig',30,80,62,80)+mv('mv-arms',ln('fig',34,80,18,68)+db(12,62,22,72,9))
    +mv('mv-legs',pl('fig','62,80 66,60 80,58'))+ln('fig',62,80,88,76),
@@ -548,27 +549,27 @@ function planBase(){return{gym:[
   {n:'Aperturas en polea o pec deck',s:3,r:'12-15',i:'cable_fly',t:'',rest:90,o:'Estiramiento controlado, sin rebotes',m:{pecho:1}},
   {n:'Extensión de tríceps sobre la cabeza',s:3,r:'10-15',i:'overhead_triceps',t:'SS',rest:90,o:'Superserie con el siguiente',m:{triceps:1}},
   {n:'Elevaciones laterales',s:3,r:'15-20',i:'lateral_raise',t:'SS',rest:60,o:'Sube con el codo, sin balanceo',m:{hombro:1}}]},
- {k:'mar',d:'MARTES',f:'Espalda + Bíceps',c:'#3b82f6',n:'Straps siempre: el agarre llega frito de los guantes.',e:[
+ {k:'mar',d:'MARTES',f:'Espalda + Bíceps',c:'#dc2626',n:'Straps siempre: el agarre llega frito de los guantes.',e:[
   {n:'Dominadas o jalón al pecho',s:4,r:'6-10',i:'pullup',t:'STRAPS',rest:150,o:'Si no llegas a 6 limpias, jalón o asistidas',m:{espalda:1,biceps:.4}},
   {n:'Remo máquina, T-bar o mancuerna',s:4,r:'8-10',i:'bent_row',t:'STRAPS',rest:120,o:'Torso estable, sin tirones lumbares',m:{espalda:1,biceps:.4}},
   {n:'Jalón brazo recto o pullover',s:2,r:'12-15',i:'straight_arm_pulldown',t:'',rest:60,o:'Aísla dorsal sin depender del agarre',m:{espalda:1}},
   {n:'Face pull',s:3,r:'15-20',i:'face_pull',t:'SS',rest:60,o:'Compensa la postura de guardia',m:{hombro:.7,espalda:.3}},
   {n:'Curl con barra EZ',s:3,r:'8-12',i:'curl_ez',t:'SS',rest:90,o:'',m:{biceps:1}}]},
- {k:'mie',d:'MIÉRCOLES',f:'Hombro + Brazo',c:'#f59e0b',n:'Día ligero. Sin trabajo directo de antebrazo.',e:[
+ {k:'mie',d:'MIÉRCOLES',f:'Hombro + Brazo',c:'#f5c518',n:'Día ligero. Sin trabajo directo de antebrazo.',e:[
   {n:'Press militar mancuernas o máquina',s:3,r:'8-12',i:'ohp_db',t:'',rest:120,o:'No barra: el hombro viene pre-fatigado del boxeo',m:{hombro:1,triceps:.4}},
   {n:'Elevaciones laterales en polea',s:4,r:'12-20',i:'lateral_raise_cable',t:'',rest:60,o:'Deltoide lateral, el que te falta',m:{hombro:1}},
   {n:'Pájaros o reverse pec deck',s:3,r:'15-20',i:'reverse_fly',t:'',rest:60,o:'Deltoide posterior',m:{hombro:1}},
   {n:'Encogimientos de trapecio',s:3,r:'10-15',i:'shrug',t:'',rest:60,o:'Pausa arriba, sin rotar el hombro',m:{trapecio:1}},
   {n:'Curl martillo',s:3,r:'10-12',i:'hammer_curl',t:'SS',rest:90,o:'',m:{biceps:1}},
   {n:'Extensión de tríceps en polea',s:3,r:'10-15',i:'triceps_pushdown',t:'SS',rest:90,o:'',m:{triceps:1}}]},
- {k:'jue',d:'JUEVES',f:'Torso completo',c:'#8b5cf6',n:'Todo en superseries. Sin abdomen aquí: lo cubre el boxeo.',e:[
+ {k:'jue',d:'JUEVES',f:'Torso completo',c:'#b91c1c',n:'Todo en superseries. Sin abdomen aquí: lo cubre el boxeo.',e:[
   {n:'Press banca plano',s:4,r:'6-10',i:'bench_press_flat',t:'SS',rest:150,o:'Aquí sí puedes usar barra',m:{pecho:1,triceps:.4}},
   {n:'Remo máquina o jalón neutro',s:4,r:'8-12',i:'machine_row',t:'SS',rest:150,o:'Con straps',m:{espalda:1,biceps:.4}},
   {n:'Press inclinado en máquina',s:3,r:'10-12',i:'incline_machine_press',t:'SS',rest:90,o:'',m:{pecho:1,triceps:.3}},
   {n:'Remo sentado agarre ancho',s:3,r:'10-12',i:'seated_row',t:'SS',rest:90,o:'',m:{espalda:1,biceps:.3}},
   {n:'Aperturas en polea',s:2,r:'12-15',i:'cable_fly',t:'SS',rest:60,o:'',m:{pecho:1}},
   {n:'Face pull o pájaros',s:2,r:'15-20',i:'face_pull',t:'SS',rest:60,o:'',m:{hombro:.7,espalda:.3}}]},
- {k:'vie',d:'VIERNES',f:'Pierna completa',c:'#10b981',n:'Sin gemelo: el boxeo te lo trabaja a diario.',e:[
+ {k:'vie',d:'VIERNES',f:'Pierna completa',c:'#f5c518',n:'Sin gemelo: el boxeo te lo trabaja a diario.',e:[
   {n:'Hack squat o prensa de piernas',s:4,r:'6-10',i:'leg_press',t:'',rest:180,o:'Máquina guiada, no sentadilla libre tras el boxeo',m:{cuadriceps:1,gluteo:.5}},
   {n:'Curl femoral tumbado o sentado',s:3,r:'10-15',i:'leg_curl',t:'',rest:90,o:'El femoral primero: viene cansado',m:{femoral:1}},
   {n:'Hip thrust o RDL con mancuernas',s:3,r:'8-12',i:'hip_thrust',t:'',rest:120,o:'Moderado. No busques peso muerto pesado hoy',m:{gluteo:1,femoral:.7}},
@@ -580,23 +581,23 @@ function planBase(){return{gym:[
  {k:'lun',d:'LUNES',f:'Flexión cargada',c:'#ef4444',n:'Tu ejercicio de fuerza del abdomen: súbele peso.',e:[
   {n:'Crunch en polea de rodillas',s:4,r:'10-15',i:'cable_crunch',t:'CARGA',rest:60,o:'Acerca las costillas a la pelvis, no es cadera',m:{core:1}},
   {n:'Elevación de piernas colgado',s:3,r:'8-12',i:'hanging_leg_raise',t:'',rest:60,o:'Sin balanceo',m:{core:1}}]},
- {k:'mar',d:'MARTES',f:'Antirrotación',c:'#3b82f6',n:'El torso no gira. Ahí está todo el trabajo.',e:[
+ {k:'mar',d:'MARTES',f:'Antirrotación',c:'#dc2626',n:'El torso no gira. Ahí está todo el trabajo.',e:[
   {n:'Pallof press en polea',s:3,r:'10-12 /lado',i:'pallof',t:'',rest:45,o:'Sin dejar que te gire el torso',m:{core:1}},
   {n:'Woodchopper en polea',s:3,r:'12 /lado',i:'woodchopper',t:'',rest:45,o:'Gira desde el torso, no desde los brazos',m:{core:1}},
   {n:'Plancha lateral',s:2,r:'30-40 s /lado',i:'side_plank',t:'',rest:45,o:'Cadera alta, línea recta',m:{core:1}}]},
- {k:'mie',d:'MIÉRCOLES',f:'Antiextensión',c:'#f59e0b',n:'Si la lumbar se arquea, reduce el recorrido.',e:[
+ {k:'mie',d:'MIÉRCOLES',f:'Antiextensión',c:'#f5c518',n:'Si la lumbar se arquea, reduce el recorrido.',e:[
   {n:'Rueda abdominal',s:4,r:'8-12',i:'ab_wheel',t:'',rest:60,o:'De rodillas. La lumbar no se arquea',m:{core:1}},
   {n:'Dead bug con peso',s:3,r:'8 /lado',i:'dead_bug',t:'',rest:45,o:'Lumbar pegada al suelo. Lento',m:{core:1}},
   {n:'Hollow hold',s:2,r:'20-30 s',i:'hollow',t:'',rest:45,o:'Si la lumbar se despega, sube las rodillas',m:{core:1}}]},
- {k:'jue',d:'JUEVES',f:'Flexión + oblicuo',c:'#8b5cf6',n:'Levanta la pelvis, no las piernas.',e:[
+ {k:'jue',d:'JUEVES',f:'Flexión + oblicuo',c:'#b91c1c',n:'Levanta la pelvis, no las piernas.',e:[
   {n:'Crunch inverso en banco declinado',s:3,r:'12-15',i:'reverse_crunch',t:'',rest:60,o:'',m:{core:1}},
   {n:'Elevación colgado con giro',s:3,r:'8 /lado',i:'hanging_twist',t:'',rest:60,o:'Rodillas a un lado alternando',m:{core:1}},
   {n:'Plancha lateral con elevación de cadera',s:3,r:'10 /lado',i:'side_plank_raise',t:'',rest:45,o:'',m:{core:1}}]},
- {k:'vie',d:'VIERNES',f:'Ligero · control',c:'#10b981',n:'Día de pierna: el core ya va cargado. Solo control.',e:[
+ {k:'vie',d:'VIERNES',f:'Ligero · control',c:'#f5c518',n:'Día de pierna: el core ya va cargado. Solo control.',e:[
   {n:'Dead bug sin peso',s:2,r:'10 /lado',i:'dead_bug_light',t:'LIGERO',rest:30,o:'Lento, respirando',m:{core:.5}},
   {n:'Bird dog',s:2,r:'10 /lado',i:'bird_dog',t:'',rest:30,o:'Sin que se mueva la cadera',m:{core:.5}},
   {n:'Respiración 90/90',s:2,r:'5 resp.',i:'breathing',t:'',rest:30,o:'Inhala 4 s, exhala 6 s',m:{}}]},
- {k:'sab',d:'SÁBADO',f:'Antiflexión lateral',c:'#06b6d4',n:'Una garrafa o una mochila cargada sirven.',e:[
+ {k:'sab',d:'SÁBADO',f:'Antiflexión lateral',c:'#f59e0b',n:'Una garrafa o una mochila cargada sirven.',e:[
   {n:'Paseo del granjero a una mano',s:4,r:'30-40 m',i:'farmer',t:'EN CASA',rest:60,o:'No te inclines hacia el peso',m:{core:1,trapecio:.3}},
   {n:'Plancha lateral',s:3,r:'40 s /lado',i:'side_plank',t:'',rest:45,o:'Pasados 45 s, añade carga',m:{core:1}},
   {n:'Hollow hold',s:3,r:'20-30 s',i:'hollow',t:'',rest:45,o:'',m:{core:1}}]},
@@ -694,6 +695,10 @@ function migrate(){
 function save(){ try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){toast('No se pudo guardar. ¿Modo incógnito?');} }
 const plan=()=>DB.blocks[DB.ab].plan;
 const dayObj=(m,k)=>plan()[m].find(x=>x.k===k)||{k,d:'',f:'',c:'#64748b',n:'',e:[]};
+/* reconduce cualquier color de día (incl. bloques antiguos ya guardados) a la paleta negro/rojo/amarillo */
+const DAYCOL={'#ef4444':'#ef4444','#3b82f6':'#dc2626','#f59e0b':'#f5c518','#8b5cf6':'#b91c1c',
+  '#10b981':'#f5c518','#06b6d4':'#f59e0b','#64748b':'#3a3a42'};
+const dayCol=c=>DAYCOL[c]||c||'#3a3a42';
 const exK=(m,k,n)=>m+'|'+k+'|'+n;
 function dlog(d){ DB.log[d]=DB.log[d]||{ex:{}}; if(!DB.log[d].ex)DB.log[d].ex={}; return DB.log[d]; }
 
@@ -904,7 +909,7 @@ function toast(m){
   const t=document.createElement('div');
   t.textContent=m;
   t.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:150px;z-index:99;'+
-    'background:#1c2942;border:1px solid #26344d;color:#e8eef7;padding:10px 15px;border-radius:11px;'+
+    'background:#1f1f26;border:1px solid #33333d;color:#f3f0ee;padding:10px 15px;border-radius:11px;'+
     'font-size:13.5px;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.5);max-width:88vw;text-align:center';
   document.body.appendChild(t);
   setTimeout(()=>t.remove(),2600);
@@ -923,7 +928,7 @@ function lineChart(pts,opt){
   if(opt.min!=null&&mn<opt.min) mn=opt.min;
   const X=i=>PL+(pts.length===1?0:(i/(pts.length-1))*(W-PL-PR));
   const Y=v=>PT+(1-(v-mn)/(mx-mn))*(H-PT-PB);
-  const col=opt.color||'#60a5fa';
+  const col=opt.color||'#f5c518';
   let g='';
   for(let i=0;i<=3;i++){const v=mn+(mx-mn)*i/3, y=Y(v);
     g+=`<line class="gl" x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}"/>`
@@ -932,7 +937,7 @@ function lineChart(pts,opt){
   const area=`${d} L${X(pts.length-1).toFixed(1)},${H-PB} L${X(0).toFixed(1)},${H-PB} Z`;
   let ln2='';
   if(opt.series2&&opt.series2.length===pts.length){
-    ln2=`<path class="ln" d="${opt.series2.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p).toFixed(1)}`).join(' ')}" stroke="${opt.color2||'#fb923c'}" stroke-dasharray="5 4" stroke-width="2"/>`;
+    ln2=`<path class="ln" d="${opt.series2.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p).toFixed(1)}`).join(' ')}" stroke="${opt.color2||'#ef4444'}" stroke-dasharray="5 4" stroke-width="2"/>`;
   }
   let dots=pts.map((p,i)=>(pts.length<=26||i===pts.length-1)
     ?`<circle class="pt" cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="${i===pts.length-1?3.6:2.4}" fill="${col}"/>`:'').join('');
@@ -954,7 +959,7 @@ function barsChart(items,opt){
       +`<text x="${PL-4}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${opt.fmt?opt.fmt(v):Math.round(v)}</text>`;}
   const bars=items.map((it,i)=>{
     const h=(it.v/mx)*(H-PT-PB), x=PL+i*bw+bw*.16, w=bw*.68, y=H-PB-h;
-    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(h,1).toFixed(1)}" rx="2.5" fill="${it.c||opt.color||'#a78bfa'}"/>`
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(h,1).toFixed(1)}" rx="2.5" fill="${it.c||opt.color||'#f5c518'}"/>`
       +`<text x="${(x+w/2).toFixed(1)}" y="${H-6}" text-anchor="middle">${it.l||''}</text>`;
   }).join('');
   return `<svg class="chart" viewBox="0 0 ${W} ${H}">${g}${bars}</svg>`;
@@ -963,7 +968,7 @@ function barsChart(items,opt){
 /* ============================== vista HOY =============================== */
 function vHoy(){
   const D=dayObj(mode,day), c=cyc(), f=fase();
-  let h=`<div class="dayhead" style="background:${D.c}"><h1>${esc(D.d)}</h1>
+  let h=`<div class="dayhead" style="background:${dayCol(D.c)}"><h1>${esc(D.d)}</h1>
     <p>${esc(D.f)}${f?' · '+f.rir:''}</p></div>`;
 
   const sc=rdToday()?rdToday().score:null, rv=rdVerdict(sc);
@@ -987,6 +992,7 @@ function vHoy(){
       <span style="color:var(--tx3)">${paused?'en pausa · ':''}${done}/${tot} series · ${Math.round(ton)} kg</span>
       <span class="sep"></span>
       ${L.start&&!L.end?`<button type="button" id="bPause" class="${paused?'on':''}">${paused?'Reanudar':'Pausar'}</button>`:''}
+      ${L.start&&!L.end?`<button type="button" id="bFin" class="fin">Finalizar</button>`:''}
       <button type="button" id="bStart" class="${L.start?'on':''}">${L.start?'En marcha':'Empezar'}</button>
     </div>`;
     if(el!=null&&el>60) h+=`<div class="banner r">Llevas ${el} min. Corta aquí: lo que queda suma poco y te resta recuperación.</div>`;
@@ -1004,7 +1010,7 @@ function vHoy(){
           <div class="thumb" role="button" tabindex="0" style="cursor:pointer" data-ic="${esc(ex.i||'generic')}" data-n="${esc(ex.n)}" data-s="${ex.s}" data-r="${esc(ex.r)}" data-t="${esc(ex.t||'')}" data-o="${esc(ex.o||'')}"><svg class="icon" viewBox="0 0 100 100" aria-hidden="true">${IC[ex.i]||IC.generic}</svg></div>
           <div class="exmeta">
             <div class="exname">${ix+1}. ${esc(ex.n)}</div>
-            <div class="extarget" style="color:${D.c}">${ex.s} × ${esc(ex.r)}
+            <div class="extarget" style="color:${dayCol(D.c)}">${ex.s} × ${esc(ex.r)}
               ${ex.t?`<span class="tag">${esc(ex.t)}</span>`:''}
               ${sg?`<span class="tag sug">${sg.why==='sube'?'↑ ':''}${sg.kg} kg</span>`:''}
               ${isPR?'<span class="tag prb">★ PR</span>':''}</div>
@@ -1037,9 +1043,7 @@ function vHoy(){
       <div class="mini" id="sRpeV">${L.rpe||7}/10</div>
       <label class="f" for="sNote">Nota (molestias, sensaciones)</label>
       <input class="f" type="text" id="sNote" value="${esc(L.note||'')}" placeholder="Hombro derecho tirando en el press...">
-      <div class="row" style="margin-top:11px">
-        <button type="button" class="btn ok" id="bFin">Cerrar sesión de hoy</button>
-      </div></div>`;
+      <div class="mini">Usa <b>Finalizar</b> arriba para cerrar la sesión de hoy cuando termines.</div></div>`;
   }
   h+=`<details class="block"><summary>Reglas que no se saltan</summary><ul>${
     REGLAS[mode].map(r=>`<li>${esc(r)}</li>`).join('')}</ul></details>`;
@@ -1106,10 +1110,10 @@ function vCal(){
     let g=0,b=0;
     for(let j=0;j<7;j++){const dd=shift(wss,j),LL=DB.log[dd]||{};
       if(LL.gym||hasSets(dd,'gym'))g++; if(LL.box&&LL.box.min)b++;}
-    items.push({l:i===0?'act':'-'+i,v:g+b,c:'#60a5fa'});
+    items.push({l:i===0?'act':'-'+i,v:g+b,c:'#f5c518'});
   }
   h+=`<div class="sect">SESIONES TOTALES POR SEMANA</div>
-    <div class="card">${barsChart(items,{color:'#60a5fa'})}
+    <div class="card">${barsChart(items,{color:'#f5c518'})}
     <div class="mini">Gimnasio + boxeo. Con el plan completo deberías rondar 10. Si baja mucho de forma
     sostenida, el problema es de adherencia; si sube por encima de 11, vigila la recuperación.</div></div>`;
   return h;
@@ -1180,7 +1184,7 @@ function vPro(){
     const pts=hh.map(x=>({d:x.date,v:x.best.e}));
     const first=pts.length?pts[0].v:0, lastv=pts.length?pts[pts.length-1].v:0;
     const dpc=first?((lastv-first)/first*100):0;
-    h+=`<div class="card">${lineChart(pts,{color:'#34d399',fmt:v=>Math.round(v)})}
+    h+=`<div class="card">${lineChart(pts,{color:'#ef4444',fmt:v=>Math.round(v)})}
       <div class="lst">
         <div class="it"><div class="g"><div class="t">1RM estimado ahora</div><div class="d">fórmula de Epley</div></div>
           <div class="n">${r1(lastv)} kg</div></div>
@@ -1192,7 +1196,7 @@ function vPro(){
       </div></div>`;
     const vpts=hh.map(x=>({d:x.date,v:x.vol}));
     h+=`<div class="sect">TONELAJE DE ESE EJERCICIO</div>
-      <div class="card">${lineChart(vpts,{color:'#a78bfa',min:0,fmt:v=>Math.round(v)})}
+      <div class="card">${lineChart(vpts,{color:'#f5c518',min:0,fmt:v=>Math.round(v)})}
       <div class="mini">Kilos totales movidos por sesión (peso × repeticiones × series). Sube cuando
       progresas en carga o en repeticiones, así que es el indicador más honesto de que estás haciendo más trabajo.</div></div>`;
   }
@@ -1204,7 +1208,7 @@ function vPro(){
     wk.push({l:i===0?'act':'-'+i,v:Math.round(v.ton/1000*10)/10});
   }
   h+=`<div class="sect">TONELAJE SEMANAL TOTAL (t)</div>
-    <div class="card">${barsChart(wk,{color:'#fb923c',fmt:v=>r1(v)})}</div>`;
+    <div class="card">${barsChart(wk,{color:'#ef4444',fmt:v=>r1(v)})}</div>`;
 
   /* PRs */
   const prk=Object.keys(DB.prs).sort((a,b)=>DB.prs[b].date.localeCompare(DB.prs[a].date));
@@ -1221,7 +1225,7 @@ function vPro(){
   const rk=Object.keys(DB.rd).sort();
   if(rk.length){
     h+=`<div class="sect">RECUPERACIÓN</div><div class="card">
-      ${lineChart(rk.slice(-30).map(d=>({d,v:DB.rd[d].score})),{color:'#fbbf24',min:0,fmt:v=>Math.round(v)})}
+      ${lineChart(rk.slice(-30).map(d=>({d,v:DB.rd[d].score})),{color:'#f5c518',min:0,fmt:v=>Math.round(v)})}
       <div class="mini">Media de los últimos 7 check-ins: <b>${rdAvg(7)}/100</b>. Si la media baja de 60
       durante más de una semana, no es falta de ganas: es que 10 sesiones semanales te están pasando por encima.</div></div>`;
   }
@@ -1263,16 +1267,16 @@ function vCue(){
     semana y siempre en el mismo punto.</div></div>`;
 
   h+=`<div class="sect">PESO: DATO DIARIO Y MEDIA MÓVIL</div><div class="card">
-    ${lineChart(ser.map(p=>({d:p.d,v:p.w})),{color:'#60a5fa',series2:ma.map(p=>p.w),color2:'#fb923c',fmt:v=>r1(v)})}
-    <div class="mini">Azul es el peso diario, naranja la media de 7 días. Guíate solo por la naranja: la
-    azul se mueve con la sal, los hidratos y el agua, y te hará tomar decisiones equivocadas.</div></div>`;
+    ${lineChart(ser.map(p=>({d:p.d,v:p.w})),{color:'#f5c518',series2:ma.map(p=>p.w),color2:'#ef4444',fmt:v=>r1(v)})}
+    <div class="mini">Amarillo es el peso diario, rojo la media de 7 días. Guíate solo por la roja: la
+    amarilla se mueve con la sal, los hidratos y el agua, y te hará tomar decisiones equivocadas.</div></div>`;
 
   MEAS.slice(1).forEach(([k,l,u])=>{
     const s=Object.keys(DB.body).filter(d=>nm(DB.body[d][k])).sort().map(d=>({d,v:nm(DB.body[d][k])}));
     if(s.length<2) return;
     const dd=s[s.length-1].v-s[0].v;
     h+=`<div class="sect">${l.toUpperCase()} (${u}) · ${dd>=0?'+':''}${r1(dd)}</div>
-      <div class="card">${lineChart(s,{color:'#a78bfa',fmt:v=>r1(v)})}</div>`;
+      <div class="card">${lineChart(s,{color:'#f5c518',fmt:v=>r1(v)})}</div>`;
   });
 
   h+=`<div class="sect">ENERGÍA</div><div class="card"><div class="lst">
@@ -1310,10 +1314,10 @@ function vPer(){
   for(let i=5;i>=0;i--){
     const ws=shift(weekStart(TODAY()),-7*i); let g=0;
     for(let j=0;j<7;j++){const dd=shift(ws,j); if((DB.log[dd]&&DB.log[dd].gym)||hasSets(dd,'gym'))g++;}
-    ad.push({l:i===0?'act':'-'+i,v:pl?Math.round(g/pl*100):0,c:'#34d399'});
+    ad.push({l:i===0?'act':'-'+i,v:pl?Math.round(g/pl*100):0,c:'#ef4444'});
   }
   h+=`<div class="sect">ADHERENCIA AL GIMNASIO (%)</div>
-    <div class="card">${barsChart(ad,{color:'#34d399',fmt:v=>Math.round(v)})}
+    <div class="card">${barsChart(ad,{color:'#ef4444',fmt:v=>Math.round(v)})}
     <div class="mini">Sesiones hechas sobre las ${pl} planificadas. Por debajo del 80 % sostenido, el
     problema no es la programación: es que el plan no encaja en tu semana y hay que recortarlo.</div></div>`;
 
@@ -1389,7 +1393,7 @@ function renderEd(){
     </div>
     <div class="days" style="margin-top:8px">`;
   b.plan[edMode].forEach((d,i)=>h+=`<button type="button" data-ed="${i}" aria-pressed="${i===edDay}"
-    style="${i===edDay?'background:'+d.c+';color:#fff;border-color:transparent':''}">${DL[i]}</button>`);
+    style="${i===edDay?'background:'+dayCol(d.c)+';color:#fff;border-color:transparent':''}">${DL[i]}</button>`);
   h+=`</div>
     <label class="f" for="edF">Enfoque del día</label>
     <input class="f" type="text" id="edF" value="${esc(D.f)}">
