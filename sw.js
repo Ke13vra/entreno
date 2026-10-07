@@ -1,8 +1,6 @@
-/* Service worker generado por _build.ps1 Â· version 2.5
-   Cachea la app para que funcione sin cobertura en el gimnasio.
-   El nombre de la cache lleva la version: al cambiarla, el navegador
-   instala el worker nuevo y avisa dentro de la app. */
-const CACHE = 'entreno-2.5';
+/* Service worker: cachea la app para que funcione sin cobertura en el gimnasio.
+   Estrategia: cache-first con actualización en segundo plano. */
+const CACHE = 'entreno-v2-2';
 const FILES = [
   './',
   './index.html',
@@ -16,6 +14,7 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
       .then(c => c.addAll(FILES).catch(() => c.add('./index.html')))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -31,6 +30,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   if (new URL(req.url).origin !== location.origin) return;
+
   e.respondWith(
     caches.match(req, { ignoreSearch: true }).then(hit => {
       const net = fetch(req).then(res => {
@@ -45,6 +45,7 @@ self.addEventListener('fetch', e => {
   );
 });
 
+/* Permite forzar la actualización desde la página */
 self.addEventListener('message', e => {
   if (e.data === 'skipWaiting') self.skipWaiting();
 });
