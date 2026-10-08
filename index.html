@@ -286,6 +286,24 @@
   .exoview h2{margin:8px 0 0}
   .exoview .extarget{font-size:18px}
 
+  /* ---- multiperfil ---- */
+  .wholist{max-height:50vh; overflow:auto; display:flex; flex-direction:column; gap:8px}
+  .whoitem{display:flex; align-items:center; gap:8px}
+  .whopick{flex:1; display:flex; align-items:center; gap:12px; background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:8px 10px; color:var(--tx); cursor:pointer; text-align:left}
+  .whoname{font-weight:700}
+  .whodel{flex:0 0 auto; width:32px; height:32px; border-radius:8px; background:none; border:1px solid var(--line); color:var(--bad); cursor:pointer}
+  .avatar{width:44px; height:44px; border-radius:50%; overflow:hidden; background:var(--card2); flex:0 0 auto}
+  .avatar img{width:100%; height:100%; object-fit:cover; display:block}
+  .avatar.lg{width:64px; height:64px}
+  .avatar.sm{width:28px; height:28px}
+  .avini{display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:var(--or); color:#160505; font-weight:800}
+  .idcard{margin-top:0}
+  .idrow{display:flex; gap:12px; align-items:center}
+  .idmeta{flex:1; min-width:0}
+  .hdprof{display:flex; align-items:center; gap:6px; background:none; border:0; color:var(--tx); cursor:pointer}
+  .hdname{font-weight:700; font-size:13px; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  #dWho .dlg{padding-bottom:calc(15px + env(safe-area-inset-bottom,0px))}
+
   @media (prefers-reduced-motion: reduce){ .icon .mv{animation:none} }
 </style>
 </head>
@@ -294,6 +312,10 @@
 <header>
   <div class="top">
     <div class="brand">ENTRENO</div>
+    <button type="button" class="hdprof" id="hdProf" aria-label="Cambiar de perfil">
+      <span class="avatar sm" id="hdAvatar"></span>
+      <span class="hdname" id="hdName"></span>
+    </button>
     <div class="pill ph" id="phase">–</div>
     <div class="pill rd" id="rdPill" role="button" tabindex="0">Check-in</div>
   </div>
@@ -407,6 +429,36 @@
   <div class="exnote" id="exoNote" style="border-radius:10px;border-top:1px solid var(--line);width:100%;box-sizing:border-box;margin-top:8px"></div>
   <div class="row" style="margin-top:12px">
     <button type="button" class="btn" id="exoClose">Cerrar</button>
+  </div>
+</div></dialog>
+
+<!-- selección de perfil -->
+<dialog id="dWho"><div class="dlg">
+  <h2>¿Quién entrena?</h2>
+  <p class="mini" id="whoSub">Elige tu perfil para empezar.</p>
+  <div id="whoList" class="wholist"></div>
+  <div class="row" style="margin-top:12px">
+    <button type="button" class="btn pri" id="whoNew">+ Nuevo perfil</button>
+    <button type="button" class="btn hide" id="whoCancel">Cancelar</button>
+  </div>
+</div></dialog>
+
+<!-- subdiálogo CREAR perfil (nombre + foto). La edición del perfil activo vive en vPer(). -->
+<dialog id="dProf"><div class="dlg">
+  <h2 id="prTitle">Nuevo perfil</h2>
+  <div class="idrow">
+    <div class="avatar lg" id="prAvatar"></div>
+    <div>
+      <label class="btn sm" style="display:inline-block">Elegir foto
+        <input type="file" accept="image/*" id="prPhoto" class="hide">
+      </label>
+    </div>
+  </div>
+  <label class="f" for="prName">Nombre</label>
+  <input class="f" type="text" id="prName" maxlength="40" placeholder="Tu nombre">
+  <div class="row" style="margin-top:12px">
+    <button type="button" class="btn pri" id="prSave">Guardar</button>
+    <button type="button" class="btn" id="prClose">Cancelar</button>
   </div>
 </div></dialog>
 
@@ -654,6 +706,11 @@ const MET={box:{6:'Técnica / sombra',7.8:'Sacos y manoplas',9:'Guanteo ligero',
 
 /* ================================ estado ================================ */
 const KEY='entreno_v2', OLD='entreno_v1';
+const PK='entreno_profiles_v1';
+let PROFS=null;
+let MOUNTED=false;
+let LEGACY_V1_IMPORTED=false;
+let prPhotoTmp='';
 const DK=['lun','mar','mie','jue','vie','sab','dom'], DL=['L','M','X','J','V','S','D'];
 const DLN=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const MN=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -674,25 +731,187 @@ const r1=v=>Math.round(v*10)/10;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function todayK(){return DK[(new Date().getDay()+6)%7];}
 
-function load(){
-  try{const r=localStorage.getItem(KEY); if(r){const o=JSON.parse(r); DB=Object.assign(DB,o);}}catch(e){}
-  if(!DB.blocks||!DB.blocks.length) DB.blocks=[{id:1,name:'Bloque 1',start:'',plan:planBase()}];
-  DB.blocks.forEach(b=>{if(!b.plan)b.plan=planBase();});
-  ['log','body','rd','prs'].forEach(k=>{if(!DB[k])DB[k]={};});
-  if(!DB.migrated){ migrate(); DB.migrated=1; }
+/* ============================== multiperfil ============================= */
+function uid(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }
+function blankDB(){
+  return {v:2,
+    profile:{sex:'h',age:null,height:null,cycleStart:'',surplus:450},
+    blocks:[{id:1,name:'Bloque 1',start:'',plan:planBase()}],
+    ab:0, log:{}, body:{}, rd:{}, prs:{}};
 }
-function migrate(){
+function ensureDB(d){
+  if(!d.blocks || !d.blocks.length) d.blocks=[{id:1,name:'Bloque 1',start:'',plan:planBase()}];
+  d.blocks.forEach(b=>{ if(!b.plan) b.plan=planBase(); });
+  ['log','body','rd','prs'].forEach(k=>{ if(!d[k]) d[k]={}; });
+  if(d.ab==null || d.ab<0 || d.ab>d.blocks.length-1) d.ab=0;
+  return d;
+}
+function profIdx(){
+  if(!PROFS) return -1;
+  return PROFS.profiles.findIndex(p=>p.id===PROFS.current);
+}
+function prof(){
+  const i=profIdx();
+  return i<0 ? null : PROFS.profiles[i];
+}
+function saveProfiles(){
+  try{ localStorage.setItem(PK, JSON.stringify(PROFS)); }
+  catch(e){ toast('No se pudo guardar. ¿Modo incógnito?'); }
+}
+function normalizeProfiles(){
+  if(!PROFS || !Array.isArray(PROFS.profiles) || !PROFS.profiles.length){
+    PROFS={profiles:[{id:uid(),name:'Perfil 1',photo:'',db:blankDB()}],current:null};
+  }
+  PROFS.profiles.forEach(p=>{
+    if(typeof p.id!=='number') p.id=uid();
+    if(typeof p.name!=='string' || !p.name.trim()) p.name='Perfil';
+    if(typeof p.photo!=='string') p.photo='';
+    if(!p.db || typeof p.db!=='object') p.db=blankDB();
+    ensureDB(p.db);
+  });
+  if(!PROFS.profiles.some(p=>p.id===PROFS.current)) PROFS.current=null;
+}
+function migrateInto(d){
   try{
     const r=localStorage.getItem(OLD); if(!r) return;
     const o=JSON.parse(r); if(!o||!o.log) return;
-    if(o.cycleStart&&!DB.profile.cycleStart) DB.profile.cycleStart=o.cycleStart;
-    Object.keys(o.log).forEach(d=>{
-      DB.log[d]=DB.log[d]||{ex:{}};
-      Object.keys(o.log[d]).forEach(k=>{ DB.log[d].ex[k]=o.log[d][k]; });
+    if(o.cycleStart&&!d.profile.cycleStart) d.profile.cycleStart=o.cycleStart;
+    Object.keys(o.log).forEach(day=>{
+      d.log[day]=d.log[day]||{ex:{}};
+      Object.keys(o.log[day]).forEach(k=>{ d.log[day].ex[k]=o.log[day][k]; });
     });
+    LEGACY_V1_IMPORTED=true;
   }catch(e){}
 }
-function save(){ try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){toast('No se pudo guardar. ¿Modo incógnito?');} }
+function migrateSingleToProfiles(){
+  let d = blankDB();
+  let hadV2=false;
+  try{
+    const r=localStorage.getItem(KEY);
+    if(r){ const o=JSON.parse(r); d=Object.assign(d,o); hadV2=true; }
+  }catch(e){}
+  ensureDB(d);
+  if(!d.migrated){ migrateInto(d); d.migrated=1; }
+  const hadData = hadV2 || LEGACY_V1_IMPORTED;
+  let name;
+  if(hadData) name='Borja R.';
+  else        name='Perfil 1';
+  const id=uid();
+  return { profiles:[{id, name, photo:'', db:d}], current:id };
+}
+function mountProfile(id){
+  const p = PROFS.profiles.find(x=>x.id===id) || PROFS.profiles[0];
+  PROFS.current = p.id;
+  ensureDB(p.db);
+  DB = p.db;
+  MOUNTED = true;
+  mode='gym'; day=todayK(); view='hoy'; calM=null; proEx=null;
+  saveProfiles();
+}
+function load(){
+  let raw=null;
+  try{ raw=localStorage.getItem(PK); }catch(e){}
+  if(raw){
+    try{
+      const c=JSON.parse(raw);
+      if(c && Array.isArray(c.profiles) && c.profiles.length){
+        PROFS=c;
+        normalizeProfiles();
+        return;
+      }
+    }catch(e){ /* contenedor corrupto: cae a reconstrucción */ }
+  }
+  PROFS = migrateSingleToProfiles();
+  saveProfiles();
+}
+function save(){
+  if(!PROFS || !MOUNTED) return;
+  const i=profIdx(); if(i<0) return;
+  PROFS.profiles[i].db = DB;
+  saveProfiles();
+}
+function slug(name){ return String(name||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||'perfil'; }
+function avatarInner(p){
+  if(p.photo) return `<img src="${esc(p.photo)}" alt="" style="width:100%;height:100%;object-fit:cover">`;
+  const ini=(p.name||'?').trim().charAt(0).toUpperCase();
+  return `<span class="avini">${esc(ini)}</span>`;
+}
+function processPhoto(file, cb){
+  if(!file || !/^image\//.test(file.type)){ toast('Elige una imagen válida'); cb(''); return; }
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=()=>{
+    try{
+      const S=256, cv=document.createElement('canvas'); cv.width=S; cv.height=S;
+      const g=cv.getContext('2d');
+      const side=Math.min(img.width,img.height);
+      const sx=(img.width-side)/2, sy=(img.height-side)/2;
+      g.drawImage(img, sx,sy, side,side, 0,0, S,S);
+      const data=cv.toDataURL('image/jpeg', 0.8);
+      URL.revokeObjectURL(url);
+      cb(data);
+    }catch(e){ URL.revokeObjectURL(url); toast('No se pudo procesar la imagen'); cb(''); }
+  };
+  img.onerror=()=>{ URL.revokeObjectURL(url); toast('No se pudo leer la imagen'); cb(''); };
+  img.src=url;
+}
+function renderWho(){
+  const multi = PROFS.profiles.length>1;
+  $('#whoList').innerHTML = PROFS.profiles.map(p=>`
+    <div class="whoitem">
+      <button type="button" class="whopick" data-pick="${p.id}">
+        <span class="avatar">${avatarInner(p)}</span>
+        <span class="whoname">${esc(p.name)}</span>
+      </button>
+      ${multi?`<button type="button" class="whodel" data-delp="${p.id}" aria-label="Eliminar perfil">✕</button>`:''}
+    </div>`).join('');
+}
+function openWho(){
+  renderWho();
+  $('#whoCancel').classList.toggle('hide', !MOUNTED);
+  $('#dWho').showModal();
+}
+function closeWho(){ $('#dWho').close(); }
+function openProf(){
+  prPhotoTmp='';
+  $('#prTitle').textContent='Nuevo perfil';
+  $('#prName').value='';
+  $('#prPhoto').value='';
+  $('#prAvatar').innerHTML=avatarInner({name:'',photo:''});
+  $('#dProf').showModal();
+}
+function createProfile(name, photo){
+  const nm = (name||'').trim();
+  if(!nm){ toast('Escribe un nombre para el perfil'); return false; }
+  const p = { id:uid(), name:nm.slice(0,40), photo:photo||'', db:blankDB() };
+  PROFS.profiles.push(p);
+  mountProfile(p.id);
+  closeWho(); render();
+  return true;
+}
+function deleteProfile(id){
+  if(PROFS.profiles.length<=1){ toast('No puedes eliminar el único perfil'); return; }
+  const p = PROFS.profiles.find(x=>x.id===id); if(!p) return;
+  if(!confirm('¿Eliminar el perfil "'+p.name+'" con TODOS sus datos (entrenos, medidas y foto)?')) return;
+  if(!confirm('No se puede deshacer. ¿Confirmas que borras a "'+p.name+'"?')) return;
+  const wasCurrent = (PROFS.current===id);
+  PROFS.profiles = PROFS.profiles.filter(x=>x.id!==id);
+  if(wasCurrent){ mountProfile(PROFS.profiles[0].id); }
+  else { saveProfiles(); }
+  renderWho();
+  toast('Perfil eliminado');
+}
+function switchProfile(){
+  save();
+  openWho();
+}
+function renameProfile(v){
+  const nm=(v||'').trim();
+  if(!nm){ toast('El nombre no puede estar vacío'); render(); return; }
+  prof().name=nm.slice(0,40); save(); render();
+}
+function backupPackage(){
+  return JSON.stringify({ mp:1, name:prof().name, photo:prof().photo, db:DB });
+}
 const plan=()=>DB.blocks[DB.ab].plan;
 const dayObj=(m,k)=>plan()[m].find(x=>x.k===k)||{k,d:'',f:'',c:'#64748b',n:'',e:[]};
 /* reconduce cualquier color de día (incl. bloques antiguos ya guardados) a la paleta negro/rojo/amarillo */
@@ -1301,6 +1520,22 @@ function vPer(){
   const p=DB.profile, c=cyc(), f=fase();
   let h='';
   const w=doneWeek(), st=streak();
+  h+=`<div class="card idcard">
+    <div class="idrow">
+      <span class="avatar lg" id="pAvatar">${avatarInner(prof())}</span>
+      <div class="idmeta">
+        <label class="f" for="pName" style="margin-top:0">Nombre del perfil</label>
+        <input class="f" type="text" id="pName" maxlength="40" value="${esc(prof().name)}">
+        <label class="btn sm" style="display:inline-block;margin-top:8px">Cambiar foto
+          <input type="file" accept="image/*" id="pPhoto" class="hide">
+        </label>
+      </div>
+    </div>
+    <div class="row" style="margin-top:11px">
+      <button type="button" class="btn" id="bSwitch">Cambiar de perfil</button>
+      <button type="button" class="btn dgr" id="bDelProf">Eliminar este perfil</button>
+    </div>
+  </div>`;
   h+=`<div class="kpis three">
     <div class="kpi"><div class="v">${c?c.w:'–'}</div><div class="l">Semana del ciclo</div>
       <div class="s">${f?f.n:'fija el inicio'}</div></div>
@@ -1375,8 +1610,9 @@ function vPer(){
       <button type="button" class="btn" id="bImp">Restaurar</button>
       <button type="button" class="btn dgr" id="bWipe">Borrar todo</button>
     </div>
-    <div class="mini">Los datos viven en el navegador de este móvil. No se sincronizan solos: descarga la
-    copia una vez al mes y no perderás nada si limpias el navegador o cambias de teléfono.</div></div>`;
+    <div class="mini">La copia es de <b>este perfil</b> (sus entrenos, medidas y foto), no de todos. Los datos
+    viven en el navegador de este móvil y no se sincronizan solos: descarga la copia de cada perfil de vez en
+    cuando y no perderás nada si limpias el navegador o cambias de teléfono.</div></div>`;
   return h;
 }
 
@@ -1573,6 +1809,10 @@ function renderDays(){
 }
 function render(){
   const f=fase(), c=cyc();
+  const p=prof();
+  const ha=$('#hdAvatar'), hn=$('#hdName');
+  if(ha) ha.innerHTML = p ? avatarInner(p) : '';
+  if(hn) hn.textContent = p ? p.name : '';
   $('#phase').textContent=c?('Sem '+c.w+' · '+f.n+(c.block>1?' · B'+c.block:'')):'Fija el inicio';
   const sc=rdToday()?rdToday().score:null, rv=rdVerdict(sc);
   const rp=$('#rdPill');
@@ -1624,6 +1864,17 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('click',e=>{
   const t=e.target;
+  const del=t.closest('[data-delp]');
+  if(del){ deleteProfile(+del.dataset.delp); return; }
+  const pick=t.closest('[data-pick]');
+  if(pick){ mountProfile(+pick.dataset.pick); closeWho(); render(); return; }
+  if(t.id==='whoNew'){ openProf(); return; }
+  if(t.id==='whoCancel'){ closeWho(); return; }
+  if(t.id==='prSave'){ if(createProfile($('#prName').value, prPhotoTmp)) $('#dProf').close(); return; }
+  if(t.id==='prClose'){ $('#dProf').close(); return; }
+  if(t.id==='hdProf'||t.closest('#hdProf')){ switchProfile(); return; }
+  if(t.id==='bSwitch'){ switchProfile(); return; }
+  if(t.id==='bDelProf'){ deleteProfile(PROFS.current); return; }
   const rb=t.closest('.rest'); if(rb){ startTimer(+rb.dataset.rest||90); return; }
   const th=t.closest('.thumb[data-ic]'); if(th){
     const d=th.dataset;
@@ -1665,21 +1916,27 @@ document.addEventListener('click',e=>{
     const cp=JSON.parse(JSON.stringify(DB.blocks[DB.ab]));
     cp.id=Date.now(); cp.name='Copia de '+cp.name; cp.start=TODAY();
     DB.blocks.push(cp); DB.ab=DB.blocks.length-1; save(); render(); toast('Bloque duplicado'); return; }
-  if(t.id==='bBk'){ navigator.clipboard.writeText(JSON.stringify(DB))
-    .then(()=>toast('Copia en el portapapeles')).catch(()=>{$('#pImp').value=JSON.stringify(DB);toast('Copia en el cuadro de texto');}); return; }
-  if(t.id==='bBkD'){ dl('copia_entreno_'+TODAY()+'.json',JSON.stringify(DB),'application/json'); return; }
+  if(t.id==='bBk'){ navigator.clipboard.writeText(backupPackage())
+    .then(()=>toast('Copia del perfil en el portapapeles')).catch(()=>{$('#pImp').value=backupPackage();toast('Copia en el cuadro de texto');}); return; }
+  if(t.id==='bBkD'){ dl('copia_'+slug(prof().name)+'_'+TODAY()+'.json',backupPackage(),'application/json'); return; }
   if(t.id==='bImp'){
+    if(!MOUNTED || profIdx()<0){ toast('No se pudo restaurar'); return; }
     try{ const o=JSON.parse($('#pImp').value); if(!o||typeof o!=='object') throw 0;
-      DB=Object.assign({v:2,profile:{},blocks:[],ab:0,log:{},body:{},rd:{},prs:{}},o);
-      load(); save(); render(); toast('Datos restaurados');
+      let d, nm=prof().name, ph=prof().photo;
+      if(o.mp===1 && o.db){ d=o.db;
+        if(typeof o.name==='string'&&o.name.trim()) nm=o.name.trim().slice(0,40);
+        if(typeof o.photo==='string' && /^data:image\//.test(o.photo)) ph=o.photo; }
+      else { d=o; }
+      d=Object.assign(blankDB(), d); ensureDB(d);
+      if(!d.migrated){ migrateInto(d); d.migrated=1; }
+      prof().db=d; DB=d; prof().name=nm; prof().photo=ph;
+      save(); render(); toast('Perfil restaurado');
     }catch(err){ toast('Ese texto no es una copia válida'); } return; }
   if(t.id==='bWipe'){
-    if(!confirm('Esto borra todo: registro, medidas y bloques. ¿Seguro?')) return;
+    if(!confirm('Esto borra los datos de ESTE perfil ("'+prof().name+'"): registro, medidas y bloques. ¿Seguro?')) return;
     if(!confirm('No se puede deshacer. ¿Confirmas?')) return;
-    localStorage.removeItem(KEY); localStorage.removeItem(OLD);
-    DB={v:2,profile:{sex:'h',age:null,height:null,cycleStart:'',surplus:450},
-      blocks:[{id:1,name:'Bloque 1',start:'',plan:planBase()}],ab:0,log:{},body:{},rd:{},prs:{},migrated:1};
-    save(); render(); toast('Todo borrado'); return; }
+    const keep=prof(); keep.db=blankDB(); DB=keep.db;
+    save(); render(); toast('Datos del perfil borrados'); return; }
 });
 document.addEventListener('change',e=>{
   const t=e.target;
@@ -1688,6 +1945,9 @@ document.addEventListener('change',e=>{
   if(t.id==='pSex'){DB.profile.sex=t.value;save();render();}
   if(t.id==='pSur'){DB.profile.surplus=nm(t.value)||450;save();render();}
   if(t.id==='pCs'){DB.profile.cycleStart=t.value;save();render();}
+  if(t.id==='pName'){ renameProfile(t.value); }
+  if(t.id==='pPhoto'){ const f=t.files&&t.files[0]; processPhoto(f, data=>{ if(data){ prof().photo=data; save(); render(); } }); }
+  if(t.id==='prPhoto'){ const f=t.files&&t.files[0]; processPhoto(f, data=>{ if(data){ prPhotoTmp=data; $('#prAvatar').innerHTML=avatarInner({name:$('#prName').value,photo:prPhotoTmp}); } }); }
 });
 
 /* --------- check-in --------- */
@@ -1821,8 +2081,15 @@ if('serviceWorker' in navigator){
   });
 }
 if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
-load(); render();
-setInterval(()=>{ const L=DB.log[TODAY()]; if(view==='hoy'&&L&&L.start&&!L.end){
+load();
+/* Arranque (FEAT-002): entrada directa si hay un current válido recordado; si no,
+   se abre la selección "¿Quién entrena?" SIN render() previo (DB sin montar). */
+if(PROFS.current!=null && PROFS.profiles.some(p=>p.id===PROFS.current)){
+  mountProfile(PROFS.current); render();
+} else {
+  openWho();
+}
+setInterval(()=>{ if(!MOUNTED) return; const L=DB.log[TODAY()]; if(view==='hoy'&&L&&L.start&&!L.end){
   const el=$('.sessbar .k'); if(el){const m=sessElapsed();el.textContent=m+"'";el.className='k'+(m>60?' over':'')+(L.pauseAt?' paused':'');}
 }},30000);
 </script>
