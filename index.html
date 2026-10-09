@@ -305,6 +305,46 @@
   #dWho .dlg{padding-bottom:calc(15px + env(safe-area-inset-bottom,0px))}
 
   @media (prefers-reduced-motion: reduce){ .icon .mv{animation:none} }
+
+  /* ---- entrenamiento guiado a pantalla completa ---- */
+  .bigcta{display:block; width:100%; margin-top:9px; padding:14px 0; border-radius:12px;
+    border:1px solid var(--ok); background:var(--ok); color:#2a2206; font-weight:800; font-size:16px; cursor:pointer}
+  .guided{position:fixed; inset:0; z-index:60; background:var(--bg); color:var(--tx);
+    display:flex; flex-direction:column; max-width:620px; margin:0 auto}
+  .g-head{display:flex; align-items:center; gap:10px;
+    padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;
+    border-bottom:1px solid var(--line); background:var(--card)}
+  .g-clock{font-weight:800; font-variant-numeric:tabular-nums; font-size:16px; color:var(--ok)}
+  .g-clock.paused{opacity:.5}
+  .g-pos{font-size:12.5px; color:var(--tx3)}
+  .g-sep{flex:1}
+  .g-fin{padding:7px 11px; border-radius:9px; border:1px solid var(--or);
+    background:var(--or); color:#2a0606; font-weight:800; font-size:12.5px; cursor:pointer}
+  .g-ico{background:var(--card2); border:1px solid var(--line); color:var(--tx);
+    border-radius:9px; width:36px; height:36px; font-size:15px; cursor:pointer}
+  .g-body{flex:1; overflow:auto; padding:14px; display:flex; flex-direction:column; align-items:center; gap:10px}
+  .g-exobig{width:220px; height:220px; max-width:62vw; max-height:62vw;
+    background:var(--card2); border-radius:16px; padding:10px; cursor:pointer}
+  .gbig{width:100%; height:100%; display:block}
+  .g-exname{font-weight:800; font-size:19px; text-align:center}
+  .g-extarget{font-size:16px; color:var(--tx2); text-align:center}
+  .g-exinfo{font-size:13px; color:var(--tx2); text-align:center; max-width:360px}
+  .g-exinfo .warn{color:var(--warn)}
+  .g-restnum{font-size:68px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--ok)}
+  .g-restname{font-size:15px; color:var(--tx2); text-align:center}
+  .g-skip{padding:12px 18px; border-radius:12px; border:1px solid var(--line);
+    background:var(--card2); color:var(--tx); font-weight:800; font-size:15px; cursor:pointer}
+  .g-foot{display:flex; gap:10px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px));
+    border-top:1px solid var(--line); background:var(--card)}
+  .g-foot button{flex:1; padding:13px 0; border-radius:12px; border:1px solid var(--line);
+    background:var(--card2); color:var(--tx); font-weight:800; font-size:15px; cursor:pointer}
+  .g-foot button:disabled{opacity:.4}
+  .g-foot button#gNext[data-last="1"]{background:var(--or); border-color:var(--or); color:#2a0606}
+  .g-setrow{display:flex; align-items:center; gap:8px; width:100%; max-width:360px;
+    padding:7px 9px; border-radius:10px; border:1px solid var(--line); background:var(--card2)}
+  .g-setrow .sn{flex:0 0 auto; color:var(--tx3); font-weight:700; font-size:13px}
+  .g-setrow input{flex:1; min-width:0}
+  .g-setrow.setdone{outline:1px solid var(--ok); outline-offset:1px}
 </style>
 </head>
 <body>
@@ -461,6 +501,20 @@
     <button type="button" class="btn" id="prClose">Cancelar</button>
   </div>
 </div></dialog>
+
+<!-- entrenamiento guiado a pantalla completa -->
+<div id="guided" class="guided hide" role="dialog" aria-modal="true" aria-label="Entrenamiento guiado">
+  <header class="g-head">
+    <button type="button" class="g-ico" id="gClose" aria-label="Volver sin finalizar">✕</button>
+    <button type="button" class="g-ico" id="gPause" aria-label="Pausar o reanudar">⏸</button>
+    <span class="g-clock" id="gClock" aria-live="off" aria-label="Tiempo de sesión">0'</span>
+    <span class="g-pos" id="gPos">Ejercicio 1 de 1</span>
+    <span class="g-sep"></span>
+    <button type="button" class="g-fin" id="gFin">Finalizar entreno</button>
+  </header>
+  <div class="g-body" id="gBody"></div>
+  <footer class="g-foot" id="gFoot"></footer>
+</div>
 
 <script>
 "use strict";
@@ -719,6 +773,8 @@ let DB={v:2,profile:{sex:'h',age:null,height:null,cycleStart:'',surplus:450},
   blocks:[{id:1,name:'Bloque 1',start:'',plan:planBase()}],ab:0,
   log:{},body:{},rd:{},prs:{}};
 let mode='gym', day=todayK(), view='hoy', calM=null, proEx=null;
+/* estado del modo entrenamiento guiado */
+let guidedOpen=false, gIdx=0, gRest=false, gTick=null, gRestTick=null, gRestEnd=0, gDoneSet=new Set();
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const iso=d=>{const x=d||new Date();return new Date(x.getTime()-x.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
@@ -1186,7 +1242,8 @@ function barsChart(items,opt){
 
 /* ============================== vista HOY =============================== */
 function vHoy(){
-  const D=dayObj(mode,day), c=cyc(), f=fase();
+  const esHoy=(day===todayK());
+  const D=dayObj(mode,day), c=cyc(), f=fase();   // D = día que se MUESTRA (consulta o hoy)
   let h=`<div class="dayhead" style="background:${dayCol(D.c)}"><h1>${esc(D.d)}</h1>
     <p>${esc(D.f)}${f?' · '+f.rir:''}</p></div>`;
 
@@ -1199,21 +1256,50 @@ function vHoy(){
     h+=`<div class="banner"><b>Semana de descarga.</b> Mitad de series y 60-70 % de la carga.</div>`;
 
   const L=DB.log[TODAY()]||{};
+
+  /* ---- modo CONSULTA: día seleccionado que NO es hoy (solo lectura) ---- */
+  if(!esHoy){
+    h+=`<div class="banner b" id="noHoy">Estás viendo el <b>${DLN[DK.indexOf(day)]}</b>, no es hoy. El entrenamiento se registra en el día de hoy.</div>`;
+    if(!D.e.length){
+      h+=`<div class="banner g">${esc(D.n)}</div>`;
+    }else{
+      D.e.forEach((ex,ix)=>{
+        h+=`<section class="ex">
+          <div class="exhead">
+            <div class="thumb" role="button" tabindex="0" style="cursor:pointer" data-ic="${esc(ex.i||'generic')}" data-n="${esc(ex.n)}" data-s="${ex.s}" data-r="${esc(ex.r)}" data-t="${esc(ex.t||'')}" data-o="${esc(ex.o||'')}"><svg class="icon" viewBox="0 0 100 100" aria-hidden="true">${IC[ex.i]||IC.generic}</svg></div>
+            <div class="exmeta">
+              <div class="exname">${ix+1}. ${esc(ex.n)}</div>
+              <div class="extarget" style="color:${dayCol(D.c)}">${ex.s} × ${esc(ex.r)}
+                ${ex.t?`<span class="tag">${esc(ex.t)}</span>`:''}</div>
+              ${ex.o?`<div class="exlast">${esc(ex.o)}</div>`:''}
+            </div>
+          </div>
+        </section>`;
+      });
+      h+=`<div class="banner">${esc(D.n)}</div>`;
+    }
+    h+=`<details class="block"><summary>Reglas que no se saltan</summary><ul>${
+      REGLAS[mode].map(r=>`<li>${esc(r)}</li>`).join('')}</ul></details>`;
+    return h;
+  }
+
+  /* ---- modo HOY: registro de sesión sobre el día real ---- */
   if(D.e.length){
     const tot=D.e.reduce((a,e)=>a+e.s,0);
     let done=0, ton=0;
-    D.e.forEach(e=>{const s=(L.ex||{})[exK(mode,day,e.n)]||[];
+    D.e.forEach(e=>{const s=(L.ex||{})[exK(mode,todayK(),e.n)]||[];
       s.forEach(x=>{if(x&&nm(x.kg)&&nm(x.reps)){done++;ton+=nm(x.kg)*nm(x.reps);}});});
     const el=sessElapsed();
     const paused=!!L.pauseAt;
+    const live=L.start&&!L.end;
     h+=`<div class="sessbar">
       <span class="k ${el>60?'over':''}${paused?' paused':''}">${el!=null?el+"'":"–"}</span>
-      <span style="color:var(--tx3)">${paused?'en pausa · ':''}${done}/${tot} series · ${Math.round(ton)} kg</span>
+      <span style="color:var(--tx3)">${paused?'en pausa · ':''}${live?'En marcha · ':''}${done}/${tot} series · ${Math.round(ton)} kg</span>
       <span class="sep"></span>
-      ${L.start&&!L.end?`<button type="button" id="bPause" class="${paused?'on':''}">${paused?'Reanudar':'Pausar'}</button>`:''}
-      ${L.start&&!L.end?`<button type="button" id="bFin" class="fin">Finalizar</button>`:''}
-      <button type="button" id="bStart" class="${L.start?'on':''}">${L.start?'En marcha':'Empezar'}</button>
+      ${live?`<button type="button" id="bPause" class="${paused?'on':''}">${paused?'Reanudar':'Pausar'}</button>`:''}
+      ${live?`<button type="button" id="bFin" class="fin">Finalizar</button>`:''}
     </div>`;
+    if(!L.end) h+=`<button type="button" id="bGuided" class="bigcta">${live?'Continuar entrenamiento guiado':'Empezar entrenamiento guiado'}</button>`;
     if(el!=null&&el>60) h+=`<div class="banner r">Llevas ${el} min. Corta aquí: lo que queda suma poco y te resta recuperación.</div>`;
   }
 
@@ -1221,7 +1307,7 @@ function vHoy(){
     h+=`<div class="banner g">${esc(D.n)}</div>`;
   }else{
     D.e.forEach((ex,ix)=>{
-      const k=exK(mode,day,ex.n), last=lastOf(k), sg=sugg(ex,k), st=stalled(k), pr=DB.prs[k];
+      const k=exK(mode,todayK(),ex.n), last=lastOf(k), sg=sugg(ex,k), st=stalled(k), pr=DB.prs[k];
       const cur=((L.ex||{})[k])||[];
       const isPR=cur.some(s=>{if(!s)return false;const b=e1rm(nm(s.kg),nm(s.reps));return pr&&b>pr.e*1.001;});
       h+=`<section class="ex${isPR?' pr':''}">
@@ -1273,6 +1359,148 @@ function sessElapsed(){
   const base=L.end||Date.now();
   const paused=(L.paused||0)+(L.pauseAt?(base-L.pauseAt):0);
   return Math.max(0,Math.round((base-L.start-paused)/6e4));
+}
+
+/* ===================== sesión: finalizar / pausar ====================== */
+function finSession(){
+  const L=dlog(TODAY());
+  if(L.pauseAt){ L.paused=(L.paused||0)+(Date.now()-L.pauseAt); L.pauseAt=null; }
+  L.end=Date.now();
+  L.gym = mode==='gym'||L.gym;
+  L.abs = mode==='abs'||L.abs;
+  save();
+  const mins=sessElapsed()||0;   // L.end ya fijado → valor estable
+  closeGuided();                 // no-op si el overlay está cerrado
+  render();
+  toast('Sesión cerrada. '+mins+' min');
+}
+function togglePause(){
+  const L=dlog(TODAY());
+  if(L.pauseAt){ L.paused=(L.paused||0)+(Date.now()-L.pauseAt); L.pauseAt=null; }
+  else { L.pauseAt=Date.now(); }
+  save();
+  if(guidedOpen) paintGuidedHeader();   // overlay abierto: solo cabecera guiada
+  else render();
+}
+
+/* ===================== modo entrenamiento guiado ======================= */
+function openGuided(resume){
+  const E=dayObj(mode,todayK()).e;
+  if(!E.length){ toast('Hoy es descanso'); return; }
+  const L=dlog(TODAY());
+  if(!L.start){ L.start=Date.now(); save(); }
+  gIdx = resume ? Math.min(gIdx, E.length-1) : 0;
+  gRest=false;
+  gDoneSet=new Set();
+  E.forEach(ex=>{ const k=exK(mode,todayK(),ex.n); const arr=(L.ex||{})[k]||[];
+    arr.forEach((v,s)=>{ if(v&&nm(v.kg)!=null&&nm(v.reps)!=null) gDoneSet.add(k+'|'+s); }); });
+  guidedOpen=true;
+  $('#guided').classList.remove('hide');
+  document.body.style.overflow='hidden';
+  paintGuided(); paintGuidedHeader();
+  clearInterval(gTick); gTick=setInterval(tickGuidedClock,1000);
+}
+function closeGuided(){
+  if(!guidedOpen) return;
+  guidedOpen=false;
+  clearInterval(gTick); gTick=null;
+  clearInterval(gRestTick); gRestTick=null;
+  gRest=false;
+  $('#guided').classList.add('hide');
+  document.body.style.overflow='';
+}
+function gClockSeg(){
+  const L=DB.log[TODAY()]; if(!L||!L.start) return 0;
+  const base=L.end||Date.now();
+  const pausedMs=(L.paused||0)+(L.pauseAt?(base-L.pauseAt):0);
+  return Math.max(0,Math.round((base-L.start-pausedMs)/1000));
+}
+function gClockTxt(){ const s=gClockSeg(); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function tickGuidedClock(){
+  const L=DB.log[TODAY()];
+  const c=$('#gClock'); if(!c) return;
+  c.textContent=gClockTxt();
+  c.classList.toggle('paused', !!(L&&L.pauseAt));
+}
+function paintGuidedHeader(){
+  const L=DB.log[TODAY()]||{};
+  const M=dayObj(mode,todayK()).e.length;
+  tickGuidedClock();
+  const pos=$('#gPos'); if(pos) pos.textContent=`Ejercicio ${Math.min(gIdx+1,M)} de ${M}`;
+  const pb=$('#gPause'); if(pb) pb.textContent=L.pauseAt?'▶':'⏸';
+  const ft=$('#gFoot');
+  if(ft){
+    if(gRest){ ft.innerHTML=''; ft.style.display='none'; }
+    else{
+      ft.style.display='';
+      const last=gIdx>=M-1;
+      ft.innerHTML=`<button type="button" id="gPrev"${gIdx===0?' disabled':''}>Anterior</button>`
+        +`<button type="button" id="gNext"${last?' data-last="1"':''}>${last?'Terminar entreno':'Siguiente ejercicio'}</button>`;
+    }
+  }
+}
+function paintGuided(){
+  const body=$('#gBody'); if(!body) return;
+  if(gRest){
+    const E=dayObj(mode,todayK()).e, ex=E[gIdx]||{};
+    const left=Math.max(0,Math.ceil((gRestEnd-Date.now())/1000));
+    body.innerHTML=`<div style="flex:1"></div>
+      <div class="g-restname">Descanso</div>
+      <div class="g-restnum" id="gRestNum">${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}</div>
+      <div class="g-restname">${esc(ex.n||'')}</div>
+      <button type="button" class="g-skip" id="gSkip">Saltar descanso</button>
+      <div style="flex:1"></div>`;
+    paintGuidedHeader();
+    return;
+  }
+  const E=dayObj(mode,todayK()).e, ex=E[gIdx];
+  if(!ex){ body.innerHTML=''; return; }
+  const k=exK(mode,todayK(),ex.n), last=lastOf(k), sg=sugg(ex,k), st=stalled(k);
+  const L=DB.log[TODAY()]||{}, cur=((L.ex||{})[k])||[];
+  let s=`<div class="g-exobig" role="button" tabindex="0" aria-label="Ampliar ejercicio"
+      data-ic="${esc(ex.i||'generic')}" data-n="${esc(ex.n)}" data-s="${ex.s}"
+      data-r="${esc(ex.r)}" data-t="${esc(ex.t||'')}" data-o="${esc(ex.o||'')}">
+      <svg class="icon gbig" viewBox="0 0 100 100" aria-hidden="true">${IC[ex.i]||IC.generic}</svg></div>
+    <div class="g-exname">${esc(ex.n)}</div>
+    <div class="g-extarget">${ex.s} × ${esc(ex.r)}${ex.t?` <span class="tag">${esc(ex.t)}</span>`:''}${sg?` <span class="tag sug">${sg.why==='sube'?'↑ ':''}${sg.kg} kg</span>`:''}</div>`;
+  if(last) s+=`<div class="g-exinfo">Última vez (${last.date.slice(8)}/${last.date.slice(5,7)}): <b>${
+    last.sets.filter(x=>x&&(nm(x.kg)||nm(x.reps))).map(x=>`${x.kg||'–'}×${x.reps||'–'}`).join(', ')}</b></div>`;
+  if(st) s+=`<div class="g-exinfo"><span class="warn">Estancado 3 sesiones. Baja un 10 % y vuelve a subir.</span></div>`;
+  if(ex.o) s+=`<div class="g-exinfo">${esc(ex.o)}</div>`;
+  for(let i=0;i<ex.s;i++){
+    const v=cur[i]||{}, done=(nm(v.kg)!=null&&nm(v.reps)!=null);
+    s+=`<div class="g-setrow${done?' setdone':''}">
+      <div class="sn">${i+1}</div>
+      <input type="number" inputmode="decimal" step="0.5" min="0" placeholder="${sg?sg.kg:'kg'}"
+        value="${v.kg??''}" data-k="${esc(k)}" data-s="${i}" data-f="kg" data-nm="${esc(ex.n)}"
+        data-g="1" aria-label="${esc(ex.n)} serie ${i+1} kg" class="${v.kg?'filled':''}">
+      <input type="number" inputmode="numeric" step="1" min="0" placeholder="reps"
+        value="${v.reps??''}" data-k="${esc(k)}" data-s="${i}" data-f="reps" data-nm="${esc(ex.n)}"
+        data-g="1" aria-label="${esc(ex.n)} serie ${i+1} repeticiones" class="${v.reps?'filled':''}">
+    </div>`;
+  }
+  body.innerHTML=s;
+  paintGuidedHeader();
+}
+function startGuidedRest(){
+  const E=dayObj(mode,todayK()).e, ex=E[gIdx]||{};
+  const sec=(ex.rest===0?0:(+ex.rest||90));
+  if(sec<=0) return;
+  gRest=true; gRestEnd=Date.now()+sec*1000;
+  unlockAudio();
+  if(navigator.vibrate) navigator.vibrate(30);
+  paintGuided();
+  clearInterval(gRestTick);
+  gRestTick=setInterval(paintGuidedRest,250);
+}
+function paintGuidedRest(){
+  const left=Math.max(0,Math.ceil((gRestEnd-Date.now())/1000));
+  const n=$('#gRestNum'); if(n) n.textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+  if(left<=0 && gRestTick){
+    clearInterval(gRestTick); gRestTick=null;
+    beep(); if(navigator.vibrate) navigator.vibrate([200,100,200]);
+    gRest=false; paintGuided();
+  }
 }
 
 /* ============================ vista CALENDARIO ========================== */
@@ -1857,9 +2085,22 @@ document.addEventListener('input',e=>{
   if(t.id==='sRpe'){ const L=dlog(TODAY()); L.rpe=+t.value; $('#sRpeV').textContent=t.value+'/10'; save(); return; }
   if(t.id==='sNote'){ dlog(TODAY()).note=t.value; save(); return; }
 });
+/* descanso automático del guiado: el handler global YA persistió en DB; aquí solo
+   decidimos descanso + marca visual, leyendo del DOM de la fila (fuente única). */
+$('#gBody').addEventListener('input',e=>{
+  const t=e.target; if(!t.dataset || t.dataset.g!=='1' || !t.dataset.f) return;
+  const row=t.closest('.g-setrow'); if(!row) return;
+  const kgVal=row.querySelector('input[data-f="kg"]').value;
+  const repsVal=row.querySelector('input[data-f="reps"]').value;
+  const complete=(nm(kgVal)!=null && nm(repsVal)!=null);   // kg=0 cuenta como completa
+  const key=t.dataset.k+'|'+t.dataset.s;
+  if(complete && !gDoneSet.has(key)){ gDoneSet.add(key); startGuidedRest(); }
+  if(!complete) gDoneSet.delete(key);
+  row.classList.toggle('setdone', complete);
+});
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter'&&e.key!==' ') return;
-  const th=e.target.closest&&e.target.closest('.thumb[data-ic]');
+  const th=e.target.closest&&e.target.closest('.thumb[data-ic], .g-exobig[data-ic]');
   if(th){ e.preventDefault(); th.click(); }
 });
 document.addEventListener('click',e=>{
@@ -1876,7 +2117,7 @@ document.addEventListener('click',e=>{
   if(t.id==='bSwitch'){ switchProfile(); return; }
   if(t.id==='bDelProf'){ deleteProfile(PROFS.current); return; }
   const rb=t.closest('.rest'); if(rb){ startTimer(+rb.dataset.rest||90); return; }
-  const th=t.closest('.thumb[data-ic]'); if(th){
+  const th=t.closest('.thumb[data-ic], .g-exobig[data-ic]'); if(th){
     const d=th.dataset;
     $('#exoSvg').innerHTML=IC[d.ic]||IC.generic;
     $('#exoName').textContent=d.n;
@@ -1884,15 +2125,17 @@ document.addEventListener('click',e=>{
     const note=$('#exoNote'); if(d.o){ note.textContent=d.o; note.style.display=''; } else note.style.display='none';
     $('#dExo').showModal(); return;
   }
-  if(t.id==='bStart'){ const L=dlog(TODAY()); if(!L.start)L.start=Date.now(); save(); render(); return; }
-  if(t.id==='bPause'){ const L=dlog(TODAY());
-    if(L.pauseAt){ L.paused=(L.paused||0)+(Date.now()-L.pauseAt); L.pauseAt=null; }
-    else { L.pauseAt=Date.now(); }
-    save(); render(); return; }
-  if(t.id==='bFin'){ const L=dlog(TODAY());
-    if(L.pauseAt){ L.paused=(L.paused||0)+(Date.now()-L.pauseAt); L.pauseAt=null; }
-    L.end=Date.now(); L.gym=mode==='gym'||L.gym; L.abs=mode==='abs'||L.abs;
-    save(); toast('Sesión cerrada. '+(sessElapsed()||0)+' min'); render(); return; }
+  if(t.id==='bPause'){ togglePause(); return; }
+  if(t.id==='bFin'){ finSession(); return; }
+  if(t.id==='bGuided'){ openGuided(!!dlog(TODAY()).start); return; }
+  if(t.id==='gClose'){ closeGuided(); render(); return; }
+  if(t.id==='gPause'){ togglePause(); return; }
+  if(t.id==='gFin'){ finSession(); return; }
+  if(t.id==='gSkip'){ clearInterval(gRestTick); gRestTick=null; gRest=false; paintGuided(); return; }
+  if(t.id==='gPrev'){ gIdx=Math.max(0,gIdx-1); gRest=false; clearInterval(gRestTick); gRestTick=null; paintGuided(); paintGuidedHeader(); return; }
+  if(t.id==='gNext'){ const M=dayObj(mode,todayK()).e.length;
+    if(gIdx>=M-1){ finSession(); return; }
+    gIdx++; gRest=false; clearInterval(gRestTick); gRestTick=null; paintGuided(); paintGuidedHeader(); return; }
   const cd=t.closest('.cd[data-d]'); if(cd){ openDay(cd.dataset.d); return; }
   if(t.id==='cPrev'){ calM.m--; if(calM.m<0){calM.m=11;calM.y--;} render(); return; }
   if(t.id==='cNext'){ calM.m++; if(calM.m>11){calM.m=0;calM.y++;} render(); return; }
@@ -2089,7 +2332,7 @@ if(PROFS.current!=null && PROFS.profiles.some(p=>p.id===PROFS.current)){
 } else {
   openWho();
 }
-setInterval(()=>{ if(!MOUNTED) return; const L=DB.log[TODAY()]; if(view==='hoy'&&L&&L.start&&!L.end){
+setInterval(()=>{ if(!MOUNTED) return; const L=DB.log[TODAY()]; if(view==='hoy'&&!guidedOpen&&L&&L.start&&!L.end){
   const el=$('.sessbar .k'); if(el){const m=sessElapsed();el.textContent=m+"'";el.className='k'+(m>60?' over':'')+(L.pauseAt?' paused':'');}
 }},30000);
 </script>
